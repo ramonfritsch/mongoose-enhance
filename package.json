@@ -1,7 +1,7 @@
 {
 	"name": "mongoose-enhance",
 	"version": "0.0.1",
-	"description": "",
+	"description": "Helpful Mongoose enhancements",
 	"main": "src/index.js",
 	"scripts": {
 		"test": "jest"
