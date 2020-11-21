@@ -1,5 +1,3 @@
-const async = require('async');
-
 module.exports = (mongoose) => {
 	function fillPages(data, maxPages) {
 		var surround = Math.floor(maxPages / 2);

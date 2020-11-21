@@ -11,7 +11,9 @@ mongoose.enhance = {
 	plugins: {},
 };
 
-Object.keys(helpers).forEach((key) => (mongoose[key] = helpers[key].bind(mongoose)));
+Object.keys(helpers).forEach(
+	(key) => typeof helpers[key] === 'function' && (mongoose[key] = helpers[key].bind(mongoose)),
+);
 
 require('mongoose-strip-html-tags')(mongoose);
 require('mongoose-shortid-nodeps');

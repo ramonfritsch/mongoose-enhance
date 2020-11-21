@@ -1,5 +1,4 @@
 const util = require('util');
-const validator = require('validator');
 
 module.exports = (mongoose) => {
 	const { SchemaTypes, Types } = mongoose;
@@ -8,12 +7,12 @@ module.exports = (mongoose) => {
 	function Email(/*path, options*/) {
 		SchemaTypes.String.apply(this, arguments);
 
-		this.validate(validator.isEmail, '{LABEL} is invalid.');
+		this.validate(mongoose.validation.isEmail, '{LABEL} is invalid.');
 	}
 
 	util.inherits(Email, SchemaTypes.String);
 
-	Email.prototype.cast = (value) => validator.formatEmail(value);
+	Email.prototype.cast = (value) => mongoose.validation.formatEmail(value);
 
 	SchemaTypes.Email = Email;
 	Types.Email = String;
@@ -23,14 +22,14 @@ module.exports = (mongoose) => {
 		SchemaTypes.String.apply(this, arguments);
 
 		this.validate(
-			(value) => validator.isUsername(value),
+			(value) => mongoose.validation.isUsername(value),
 			'{LABEL} is invalid. Use only letters, numbers or _ between 3 and 50 characters.',
 		);
 	}
 
 	util.inherits(Username, SchemaTypes.String);
 
-	Username.prototype.cast = (value) => validator.formatUsername(value);
+	Username.prototype.cast = (value) => mongoose.validation.formatUsername(value);
 
 	SchemaTypes.Username = Username;
 	Types.Username = String;
@@ -39,12 +38,12 @@ module.exports = (mongoose) => {
 	function URL(/*path, options*/) {
 		SchemaTypes.String.apply(this, arguments);
 
-		this.validate(validator.isURL, '{LABEL} is invalid.');
+		this.validate(mongoose.validation.isURL, '{LABEL} is invalid.');
 	}
 
 	util.inherits(URL, SchemaTypes.String);
 
-	URL.prototype.cast = (value) => validator.formatURL(value);
+	URL.prototype.cast = (value) => mongoose.validation.formatURL(value);
 
 	SchemaTypes.URL = URL;
 	Types.URL = String;
