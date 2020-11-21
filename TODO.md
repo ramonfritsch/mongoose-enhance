@@ -1,0 +1,1 @@
+- [ ] publish validation dependency and add to package.json

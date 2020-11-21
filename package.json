@@ -1,0 +1,41 @@
+{
+	"name": "mongoose-enhance",
+	"version": "0.0.1",
+	"description": "",
+	"main": "src/index.js",
+	"scripts": {
+		"test": "jest"
+	},
+	"author": "Ramon Fritsch <ramonfritsch@gmail.com>",
+	"license": "MIT",
+	"dependencies": {
+		"glob": "^7.1.6",
+		"lodash": "^4.17.15",
+		"mongoose": "^5.9.2",
+		"mongoose-shortid-nodeps": "^0.6.5",
+		"mongoose-strip-html-tags": "^0.0.1",
+		"mongoose-unique-validator": "^2.0.3",
+		"p-limit": "^3.0.2",
+		"ucfirst": "^1.0.0"
+	},
+	"jest": {
+		"roots": [
+			"<rootDir>/src"
+		],
+		"collectCoverageFrom": [
+			"src/**/*.{js,jsx,ts,tsx}",
+			"!src/**/*.d.ts"
+		],
+		"testMatch": [
+			"<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}",
+			"<rootDir>/src/**/*.{spec,test}.{js,jsx,ts,tsx}"
+		],
+		"testEnvironment": "node"
+	},
+	"devDependencies": {
+		"mongodb-memory-server": "^6.9.2",
+		"jest": "^26.6.3",
+		"jest-cli": "^26.6.3",
+		"jest-watch-typeahead": "^0.6.1"
+	}
+}
