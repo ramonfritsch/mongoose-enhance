@@ -12,7 +12,9 @@ mongoose.enhance = {
 };
 
 Object.keys(helpers).forEach(
-	(key) => typeof helpers[key] === 'function' && (mongoose[key] = helpers[key].bind(mongoose)),
+	(key) =>
+		(mongoose[key] =
+			typeof helpers[key] === 'function' ? helpers[key].bind(mongoose) : helpers[key]),
 );
 
 require('mongoose-strip-html-tags')(mongoose);
