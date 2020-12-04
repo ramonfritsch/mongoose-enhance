@@ -1,19 +1,19 @@
 module.exports = (mongoose) => {
 	mongoose.enhance.registerPlugin((schema) => {
-		schema.methods.setOld = function (field) {
-			if (!this.$old) {
-				this.$old = {};
+		schema.methods.setOld = function (path) {
+			if (!this.$locals.old) {
+				this.$locals.old = {};
 			}
-			this.$old[field] = this.get(field);
+			this.$locals.old[path] = this.get(path);
 		};
 
-		schema.methods.getOld = function (field) {
-			return this.$old ? this.$old[field] : null;
+		schema.methods.getOld = function (path) {
+			return this.$locals.old ? this.$locals.old[path] : null;
 		};
 
-		schema.methods.clearOld = function (field) {
-			if (this.$old) {
-				delete this.$old[field];
+		schema.methods.clearOld = function (path) {
+			if (this.$locals.old) {
+				delete this.$locals.old[path];
 			}
 		};
 	});

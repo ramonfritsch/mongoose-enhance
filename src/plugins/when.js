@@ -8,7 +8,7 @@ module.exports = (mongoose) => {
 			return function () {
 				const doc = this;
 
-				return fn(doc, () => callback.call(doc));
+				return fn(doc, () => callback.call(doc), noop);
 			};
 		} else {
 			return function (next) {
@@ -22,10 +22,22 @@ module.exports = (mongoose) => {
 	function wrapPostCallback(callback, fn) {
 		if (callback.length === 0) {
 			return function (doc) {
+				// let doc = this;
+
+				// while (doc.parent) {
+				// 	doc = doc.parent;
+				// }
+
 				return fn(doc, () => callback.call(doc), noop);
 			};
 		} else {
 			return function (doc, next) {
+				// let doc = this;
+
+				// while (doc.parent) {
+				// 	doc = doc.parent;
+				// }
+
 				return fn(doc, () => callback.call(doc, next), next);
 			};
 		}
@@ -74,8 +86,6 @@ module.exports = (mongoose) => {
 			);
 
 			schema.post('init', (doc) => {
-				doc.$wasNew = doc.isNew;
-
 				if (doc.isNew) {
 					return;
 				}
@@ -83,21 +93,47 @@ module.exports = (mongoose) => {
 				keys.forEach((key) => doc.setOld(key));
 			});
 
+			schema.pre('save', function () {
+				this.$locals.wasNew = this.isNew;
+
+				this.setWasModified();
+
+				keys.forEach((key) => this.setWasModified(key));
+			});
+
 			schema._whenModifieds.forEach(({ pre, keys, callback }) => {
-				let hook = pre ? schema.pre : schema.post;
-				let wrapper = pre ? wrapPreCallback : wrapPostCallback;
+				const hook = pre ? schema.pre.bind(schema) : schema.post.bind(schema);
+				const wrapCallback = pre ? wrapPreCallback : wrapPostCallback;
 
 				hook.call(
 					schema,
 					'save',
-					wrapper(callback, function (doc, callback, next) {
-						if (doc.isNew || doc.$wasNew) {
+					wrapCallback(callback, function (doc, callback, next) {
+						if (doc.isNew || doc.$locals.wasNew) {
 							return next();
 						}
 
 						const isModified = keys.some(
-							(key) => doc.isModified(key) && doc.getOld(key) !== doc.get(key),
+							(key) =>
+								(pre ? doc.isModified(key) : doc.wasModified(key)) &&
+								doc.getOld(key) !== doc.get(key),
 						);
+
+						// if (!pre) {
+						// 	console.log(
+						// 		'post save',
+						// 		'is/wasMod(key):',
+						// 		isModified,
+						// 		'key:',
+						// 		keys[0],
+						// 		'is',
+						// 		doc.isModified(keys[0]),
+						// 		'was',
+						// 		doc.wasModified(keys[0]),
+						// 		doc.getOld(keys[0]),
+						// 		doc.get(keys[0]),
+						// 	);
+						// }
 
 						if (isModified) {
 							return callback();
@@ -109,8 +145,14 @@ module.exports = (mongoose) => {
 			});
 
 			schema.post('save', function (doc) {
-				keys.forEach((key) => doc.setOld(key));
-				doc.$wasNew = false;
+				keys.forEach((key) => {
+					doc.setOld(key);
+					doc.clearWasModified(key);
+				});
+
+				doc.clearWasModified();
+
+				doc.$locals.wasNew = false;
 			});
 		});
 

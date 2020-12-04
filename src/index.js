@@ -21,6 +21,9 @@ require('mongoose-strip-html-tags')(mongoose);
 require('mongoose-shortid-nodeps');
 
 mongoose.set('useCreateIndex', true);
+mongoose.plugin((schema) => {
+	schema.options.usePushEach = true;
+});
 
 glob.sync('*.js', {
 	cwd: path.join(__dirname, 'plugins/'),

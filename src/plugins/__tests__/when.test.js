@@ -3,10 +3,11 @@ const MongoMemory = require('mongodb-memory-server');
 jest.setTimeout(30000);
 
 function expectSequence(fn, count, mod = count) {
-	expect(fn).toBeCalledTimes(count);
 	for (let i = 1; i <= count; i++) {
 		expect(fn).nthCalledWith(i, 1 + ((i - 1) % mod));
 	}
+
+	expect(fn).toBeCalledTimes(count);
 }
 
 let mongoose;
@@ -127,6 +128,37 @@ describe('when', () => {
 			parent: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 
+		userSchema.whenPostModified('name', function () {
+			fn(8);
+		});
+
+		userSchema.whenPostModified('name', function (next) {
+			fn(9);
+			setTimeout(() => {
+				fn(10);
+				next();
+			}, 100);
+		});
+		userSchema.whenPostModified('name', function () {
+			fn(11);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(12);
+					resolve();
+				}, 50),
+			);
+		});
+		// eslint-disable-next-line no-unused-vars
+		userSchema.whenPostModified('name', function (next) {
+			fn(13);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(14);
+					resolve();
+				}, 50),
+			);
+		});
+
 		userSchema.whenModified('name', function () {
 			fn(1);
 			fn2(this.getOld('name'), this.get('name'));
@@ -159,11 +191,11 @@ describe('when', () => {
 		});
 
 		userSchema.whenModified('nested.field', function () {
-			fn(8);
+			fn(15);
 		});
 
 		userSchema.whenModified('parent', function () {
-			fn(9);
+			fn(16);
 		});
 
 		mongoose.model('User', userSchema);
@@ -186,7 +218,7 @@ describe('when', () => {
 		user.name = 'Name 3';
 		await user.save();
 
-		expectSequence(fn, 14, 7);
+		expectSequence(fn, 28, 14);
 		expect(fn2).nthCalledWith(1, 'Name 1', 'Name 2');
 		expect(fn2).nthCalledWith(2, 'Name 2', 'Name 3');
 
@@ -195,13 +227,13 @@ describe('when', () => {
 		user.nested = {};
 		await user.save();
 
-		expect(fn).toBeCalledTimes(14);
+		expect(fn).toBeCalledTimes(28);
 
 		user.set('nested.field', 'Some string');
 		await user.save();
 
-		expect(fn).toBeCalledTimes(15);
-		expect(fn).nthCalledWith(15, 8);
+		expect(fn).toBeCalledTimes(29);
+		expect(fn).nthCalledWith(29, 15);
 
 		let user2 = await new User({
 			parent: user,
@@ -211,22 +243,136 @@ describe('when', () => {
 			parent: user,
 		}).save();
 
-		expect(fn).toBeCalledTimes(15);
+		expect(fn).toBeCalledTimes(29);
 
 		user2.parent = user3;
 		await user2.save();
 
-		expect(fn).toBeCalledTimes(16);
+		expect(fn).toBeCalledTimes(30);
 
 		user2 = await User.findById(user2._id);
 
 		user2.parent = user3;
 		await user2.save();
 
-		expect(fn).toBeCalledTimes(16);
+		expect(fn).toBeCalledTimes(30);
+
+		await user2.save();
+
+		expect(fn).toBeCalledTimes(30);
+
+		user = await User.findById(user._id);
+		await user.save();
+
+		expect(fn).toBeCalledTimes(30);
 	});
 
-	it('should call whenPostRemoved callback', async () => {
+	it('should call whenModifiedOrNew callbacks', async () => {
+		const fn = jest.fn();
+		const fn2 = jest.fn();
+
+		const userSchema = new mongoose.Schema({
+			name: String,
+		});
+
+		userSchema.whenPostModifiedOrNew('name', function () {
+			fn(8);
+		});
+
+		userSchema.whenPostModifiedOrNew('name', function (next) {
+			fn(9);
+			setTimeout(() => {
+				fn(10);
+				next();
+			}, 100);
+		});
+		userSchema.whenPostModifiedOrNew('name', function () {
+			fn(11);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(12);
+					resolve();
+				}, 50),
+			);
+		});
+		// eslint-disable-next-line no-unused-vars
+		userSchema.whenPostModifiedOrNew('name', function (next) {
+			fn(13);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(14);
+					resolve();
+				}, 50),
+			);
+		});
+
+		userSchema.whenModifiedOrNew('name', function () {
+			fn(1);
+			fn2(this.getOld('name'), this.get('name'));
+		});
+		userSchema.whenModifiedOrNew('name', function (next) {
+			fn(2);
+			setTimeout(() => {
+				fn(3);
+				next();
+			}, 100);
+		});
+		userSchema.whenModifiedOrNew('name', function () {
+			fn(4);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(5);
+					resolve();
+				}, 50),
+			);
+		});
+		// eslint-disable-next-line no-unused-vars
+		userSchema.whenModifiedOrNew('name', function (next) {
+			fn(6);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(7);
+					resolve();
+				}, 50),
+			);
+		});
+
+		mongoose.model('User', userSchema);
+
+		await mongoose.createModels();
+
+		const User = mongoose.model('User');
+
+		let user = await new User({
+			name: 'Name 1',
+		}).save();
+
+		expect(fn).toBeCalledTimes(14);
+
+		user.name = 'Name 2';
+		await user.save();
+
+		user = await User.findById(user._id);
+
+		user.name = 'Name 3';
+		await user.save();
+
+		expectSequence(fn, 14 * 3, 14);
+		expect(fn2).nthCalledWith(1, null, 'Name 1');
+		expect(fn2).nthCalledWith(2, 'Name 1', 'Name 2');
+		expect(fn2).nthCalledWith(3, 'Name 2', 'Name 3');
+
+		await user.save();
+
+		expect(fn).toBeCalledTimes(14 * 3);
+
+		user = await User.findById(user._id);
+		await user.save();
+
+		expect(fn).toBeCalledTimes(14 * 3);
+	});
+
+	it('should call whenRemoved callback', async () => {
 		const fn = jest.fn();
 
 		const userSchema = new mongoose.Schema({
