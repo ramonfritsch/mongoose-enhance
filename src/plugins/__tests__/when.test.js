@@ -467,4 +467,64 @@ describe('when', () => {
 
 		expectSequence(fn, 28, 14);
 	});
+
+	it('should save documents properly inside post callbacks', async () => {
+		const fn = jest.fn();
+
+		const userSchema = new mongoose.Schema({
+			name: String,
+			derivedName: String,
+			derivedName2: String,
+			willChange: String,
+			derivedWillChange: String,
+			derivedWillChange2: String,
+		});
+
+		userSchema.whenNew(function () {
+			this.name = 'name';
+		});
+
+		userSchema.whenPostNew(function () {
+			this.derivedName = `${this.name}-derived`;
+			return this.save();
+		});
+
+		userSchema.whenPostNew(function () {
+			this.derivedName2 = `${this.name}-derived2`;
+			return this.save();
+		});
+
+		userSchema.whenPostModified('willChange', function () {
+			this.derivedWillChange = `${this.willChange}-derived3`;
+			return this.save();
+		});
+
+		userSchema.whenPostModified('willChange', function () {
+			this.derivedWillChange2 = `${this.willChange}-derived4`;
+			return this.save();
+		});
+
+		mongoose.model('User', userSchema);
+
+		await mongoose.createModels();
+
+		const User = mongoose.model('User');
+
+		const newUser = await new User({}).save();
+
+		expect(newUser.name).toBe('name');
+		expect(newUser.derivedName).toBe('name-derived');
+		expect(newUser.derivedName2).toBe('name-derived2');
+
+		newUser.willChange = 'something';
+
+		await newUser.save();
+
+		expect(newUser.name).toBe('name');
+		expect(newUser.derivedName).toBe('name-derived');
+		expect(newUser.derivedName2).toBe('name-derived2');
+		expect(newUser.willChange).toBe('something');
+		expect(newUser.derivedWillChange).toBe('something-derived3');
+		expect(newUser.derivedWillChange2).toBe('something-derived4');
+	});
 });

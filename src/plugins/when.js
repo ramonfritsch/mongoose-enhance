@@ -22,22 +22,10 @@ module.exports = (mongoose) => {
 	function wrapPostCallback(callback, fn) {
 		if (callback.length === 0) {
 			return function (doc) {
-				// let doc = this;
-
-				// while (doc.parent) {
-				// 	doc = doc.parent;
-				// }
-
 				return fn(doc, () => callback.call(doc), noop);
 			};
 		} else {
 			return function (doc, next) {
-				// let doc = this;
-
-				// while (doc.parent) {
-				// 	doc = doc.parent;
-				// }
-
 				return fn(doc, () => callback.call(doc, next), next);
 			};
 		}
@@ -57,27 +45,7 @@ module.exports = (mongoose) => {
 			);
 		};
 
-		schema.whenPostNew = function (callback) {
-			schema.pre('save', function (next) {
-				const doc = this;
-
-				doc.$wasNew = doc.isNew;
-
-				return next();
-			});
-
-			schema.post(
-				'save',
-				wrapPostCallback(callback, function (doc, callback, next) {
-					if (!doc.$wasNew) {
-						return next();
-					}
-
-					return callback();
-				}),
-			);
-		};
-
+		schema._whenPostNews = [];
 		schema._whenModifieds = [];
 
 		schema.oncePreCompile(function (schema) {
@@ -95,10 +63,36 @@ module.exports = (mongoose) => {
 
 			schema.pre('save', function () {
 				this.$locals.wasNew = this.isNew;
+				this.$locals.needsPostSave = false;
 
 				this.setWasModified();
 
 				keys.forEach((key) => this.setWasModified(key));
+			});
+
+			schema.post('save', function (doc) {
+				if (!doc.$locals.originalSave) {
+					doc.$locals.originalSave = doc.save;
+
+					doc.save = () => {
+						doc.$locals.needsPostSave = true;
+
+						return Promise.resolve(doc);
+					};
+				}
+			});
+
+			schema._whenPostNews.forEach(({ callback }) => {
+				schema.post(
+					'save',
+					wrapPostCallback(callback, function (doc, callback, next) {
+						if (!doc.$locals.wasNew) {
+							return next();
+						}
+
+						return callback();
+					}),
+				);
 			});
 
 			schema._whenModifieds.forEach(({ pre, keys, callback }) => {
@@ -119,22 +113,6 @@ module.exports = (mongoose) => {
 								doc.getOld(key) !== doc.get(key),
 						);
 
-						// if (!pre) {
-						// 	console.log(
-						// 		'post save',
-						// 		'is/wasMod(key):',
-						// 		isModified,
-						// 		'key:',
-						// 		keys[0],
-						// 		'is',
-						// 		doc.isModified(keys[0]),
-						// 		'was',
-						// 		doc.wasModified(keys[0]),
-						// 		doc.getOld(keys[0]),
-						// 		doc.get(keys[0]),
-						// 	);
-						// }
-
 						if (isModified) {
 							return callback();
 						}
@@ -153,8 +131,26 @@ module.exports = (mongoose) => {
 				doc.clearWasModified();
 
 				doc.$locals.wasNew = false;
+
+				if (doc.$locals.originalSave) {
+					doc.save = doc.$locals.originalSave.bind(doc);
+					doc.$locals.originalSave = null;
+				}
+
+				if (doc.$locals.needsPostSave) {
+					return doc.save();
+				}
 			});
+
+			schema._whenPostNews = [];
+			schema._whenModifieds = [];
 		});
+
+		schema.whenPostNew = function (callback) {
+			schema._whenPostNews.push({
+				callback,
+			});
+		};
 
 		schema.whenModified = function (keys, callback) {
 			keys = Array.isArray(keys) ? keys : [keys];
