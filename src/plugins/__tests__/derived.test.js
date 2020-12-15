@@ -30,6 +30,8 @@ describe('derived', () => {
 			itemsCount: Number,
 		});
 
+		userSchema.hasMany('Item', 'user');
+
 		userSchema.plugin(mongoose.enhance.plugins.derived, [
 			{
 				method: 'count',
@@ -54,12 +56,21 @@ describe('derived', () => {
 			ignore: Boolean,
 		});
 
+		itemSchema.hasMany('SubItem', 'item');
+
 		mongoose.model('Item', itemSchema);
+
+		const subItemSchema = new mongoose.Schema({
+			item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item' },
+		});
+
+		mongoose.model('SubItem', subItemSchema);
 
 		await mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');
+		const SubItem = mongoose.model('SubItem');
 
 		let user = await new User({
 			name: 'User Name',
@@ -110,6 +121,13 @@ describe('derived', () => {
 		expect(user.itemsCount).toBe(0);
 		expect(user2.itemsCount).toBe(2);
 
+		await new SubItem({
+			item: item2._id,
+		}).save();
+
+		let subItemsCount = await SubItem.countDocuments({});
+		expect(subItemsCount).toBe(1);
+
 		await item2.remove();
 
 		user = await User.findOne({ _id: user._id });
@@ -117,6 +135,9 @@ describe('derived', () => {
 
 		expect(user.itemsCount).toBe(0);
 		expect(user2.itemsCount).toBe(1);
+
+		subItemsCount = await SubItem.countDocuments({});
+		expect(subItemsCount).toBe(0);
 	});
 
 	it('should derive sum', async () => {

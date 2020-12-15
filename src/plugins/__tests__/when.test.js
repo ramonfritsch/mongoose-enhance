@@ -379,6 +379,8 @@ describe('when', () => {
 			name: String,
 		});
 
+		userSchema.hasMany('Item', 'user');
+
 		userSchema.whenPostRemoved(function () {
 			fn(8);
 		});
@@ -441,9 +443,16 @@ describe('when', () => {
 
 		mongoose.model('User', userSchema);
 
+		const itemSchema = new mongoose.Schema({
+			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+		});
+
+		mongoose.model('Item', itemSchema);
+
 		await mongoose.createModels();
 
 		const User = mongoose.model('User');
+		const Item = mongoose.model('Item');
 
 		let user = await new User({
 			name: 'Name 1',
@@ -463,9 +472,21 @@ describe('when', () => {
 
 		user = await User.findById(user._id);
 
+		await new Item({
+			user: user._id,
+		}).save();
+
+		let itemsCount = await Item.countDocuments({});
+
+		expect(itemsCount).toBe(1);
+
 		await user.remove();
 
 		expectSequence(fn, 28, 14);
+
+		itemsCount = await Item.countDocuments({});
+
+		expect(itemsCount).toBe(0);
 	});
 
 	it('should save documents properly inside post callbacks', async () => {
