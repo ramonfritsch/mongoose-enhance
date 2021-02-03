@@ -1,7 +1,13 @@
 module.exports = (mongoose) => {
 	mongoose.enhance.registerPlugin((schema) => {
-		schema.statics.ensureModel = function (model, callback) {
+		schema.statics.ensureModel = function (model, query, callback) {
+			if (!callback && typeof query === 'function') {
+				callback = query;
+				query = null;
+			}
+
 			if (
+				!query &&
 				typeof model === 'object' &&
 				model.constructor &&
 				model.constructor.name === 'model'
@@ -12,6 +18,7 @@ module.exports = (mongoose) => {
 			return this.findOne(
 				{
 					_id: mongoose.id(model),
+					...(query || {}),
 				},
 				callback,
 			);
