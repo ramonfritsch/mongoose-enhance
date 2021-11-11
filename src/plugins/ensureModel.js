@@ -1,6 +1,6 @@
-module.exports = (mongoose) => {
-	mongoose.enhance.registerPlugin((schema) => {
-		schema.statics.ensureModel = function (model, query, callback) {
+module.exports = mongoose => {
+	mongoose.enhance.registerGlobalPlugin(schema => {
+		schema.statics.ensureModel = function(model, query, callback) {
 			if (!callback && typeof query === 'function') {
 				callback = query;
 				query = null;

@@ -1,17 +1,23 @@
-module.exports = (mongoose) => {
+module.exports = mongoose => {
 	let schemasReadyCallbacks = [];
 	let modelsReadyCallbacks = [];
 	let modelsToRegister = [];
 	let globalPlugins = [];
+	let canCreatSchemas = true;
 
-	mongoose.enhance.registerPlugin = (plugin, options) => globalPlugins.push({ plugin, options });
+	mongoose.enhance.registerGlobalPlugin = (plugin, options) => {
+		globalPlugins.push({
+			plugin,
+			options,
+		});
+	};
 	mongoose.enhance.schemas = {};
 
-	mongoose.enhance.onceSchemasAreReady = (callback) => {
+	mongoose.enhance.onceSchemasAreReady = callback => {
 		schemasReadyCallbacks.push(callback);
 	};
 
-	mongoose.enhance.onceModelsAreReady = (callback) => {
+	mongoose.enhance.onceModelsAreReady = callback => {
 		modelsReadyCallbacks.push(callback);
 	};
 
@@ -28,40 +34,45 @@ module.exports = (mongoose) => {
 		mongoose.enhance.schemas[modelName] = schema;
 	};
 
-	mongoose.createModels = async function () {
-		await Promise.all(schemasReadyCallbacks.map((callback) => callback()));
+	mongoose.createModels = async function() {
+		canCreatSchemas = false;
+		globalPlugins = [];
+
+		await Promise.all(schemasReadyCallbacks.map(callback => callback()));
 		schemasReadyCallbacks = [];
 
-		modelsToRegister.forEach(({ schema }) => {
-			schema.runPreCompileCallbacks();
-		});
+		modelsToRegister.forEach(({ schema }) => schema.runPreCompileCallbacks());
 
 		modelsToRegister.forEach(({ modelName, schema, otherArgs }) => {
 			originalModel.apply(mongoose, [modelName, schema, ...otherArgs]);
 		});
 		modelsToRegister = [];
 
-		await Promise.all(modelsReadyCallbacks.map((callback) => callback()));
+		await Promise.all(modelsReadyCallbacks.map(callback => callback()));
 		modelsReadyCallbacks = [];
 
 		mongoose.model = originalModel.bind(mongoose);
 
-		mongoose.createModels = function () {};
+		mongoose.createModels = function() {};
 	};
 
 	// Run relationship and derived rules on all database
-	mongoose.enhance.sync = async function () {
+	mongoose.enhance.sync = async function() {
 		await mongoose.enhance.syncRelationships();
 		await mongoose.enhance.syncDerived();
 	};
 
 	class EnhancedSchema extends mongoose.Schema {
+		_preCompileCallbacks = [];
+
 		constructor(...args) {
 			super(...args);
 
-			this._preCompileCallbacks = [];
-
 			globalPlugins.forEach(({ plugin, options }) => plugin(this, options));
+
+			if (!canCreatSchemas) {
+				throw new Error('Cannot create EnhancedSchemas after models are created');
+			}
 		}
 
 		oncePreCompile(callback) {
@@ -69,10 +80,10 @@ module.exports = (mongoose) => {
 		}
 
 		runPreCompileCallbacks() {
-			this._preCompileCallbacks.forEach((callback) => callback(this));
+			this._preCompileCallbacks.forEach(callback => callback(this));
 			this._preCompileCallbacks = [];
 		}
 	}
 
-	mongoose.Schema = EnhancedSchema;
+	mongoose.EnhancedSchema = EnhancedSchema;
 };

@@ -10,7 +10,7 @@ mongoose.enhance = {
 };
 
 Object.keys(helpers).forEach(
-	(key) =>
+	key =>
 		(mongoose[key] =
 			typeof helpers[key] === 'function' ? helpers[key].bind(mongoose) : helpers[key]),
 );
@@ -19,7 +19,7 @@ require('mongoose-strip-html-tags')(mongoose);
 require('mongoose-shortid-nodeps');
 
 mongoose.set('useCreateIndex', true);
-mongoose.plugin((schema) => {
+mongoose.plugin(schema => {
 	schema.options.usePushEach = true;
 });
 

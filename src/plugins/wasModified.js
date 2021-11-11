@@ -1,6 +1,6 @@
-module.exports = (mongoose) => {
-	mongoose.enhance.registerPlugin((schema) => {
-		schema.methods.setWasModified = function (path) {
+module.exports = mongoose => {
+	mongoose.enhance.registerGlobalPlugin(schema => {
+		schema.methods.setWasModified = function(path) {
 			if (!this.$locals.wasModified) {
 				this.$locals.wasModified = {};
 			}
@@ -14,7 +14,7 @@ module.exports = (mongoose) => {
 			this.$locals.wasModified[path] = this.isModified(path);
 		};
 
-		schema.methods.wasModified = function (path) {
+		schema.methods.wasModified = function(path) {
 			if (!path) {
 				return this.$locals.wasModified['$$doc'];
 			}
@@ -22,7 +22,7 @@ module.exports = (mongoose) => {
 			return this.$locals.wasModified ? this.$locals.wasModified[path] : false;
 		};
 
-		schema.methods.clearWasModified = function (path) {
+		schema.methods.clearWasModified = function(path) {
 			if (this.$locals.wasModified) {
 				if (!path) {
 					delete this.$locals.wasModified['$$doc'];

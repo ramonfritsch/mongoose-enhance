@@ -28,14 +28,14 @@ describe('when', () => {
 	it('should fill out model', async () => {
 		// const fn = jest.fn();
 
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
 		});
 
 		mongoose.model('User', userSchema);
 
-		const companySchema = new mongoose.Schema({
+		const companySchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 

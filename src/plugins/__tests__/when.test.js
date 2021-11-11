@@ -35,7 +35,7 @@ describe('when', () => {
 	it('should call whenNew callbacks', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 
@@ -120,7 +120,7 @@ describe('when', () => {
 		const fn = jest.fn();
 		const fn2 = jest.fn();
 
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			nested: {
 				field: String,
@@ -271,7 +271,7 @@ describe('when', () => {
 		const fn = jest.fn();
 		const fn2 = jest.fn();
 
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 
@@ -375,7 +375,7 @@ describe('when', () => {
 	it('should call whenRemoved callback', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 
@@ -443,7 +443,7 @@ describe('when', () => {
 
 		mongoose.model('User', userSchema);
 
-		const itemSchema = new mongoose.Schema({
+		const itemSchema = new mongoose.EnhancedSchema({
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 
@@ -492,7 +492,7 @@ describe('when', () => {
 	it('should save documents properly inside post callbacks', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			derivedName: String,
 			derivedName2: String,

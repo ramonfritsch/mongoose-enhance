@@ -25,7 +25,7 @@ describe('derived', () => {
 	});
 
 	it('should derive count', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			itemsCount: Number,
 		});
@@ -50,7 +50,7 @@ describe('derived', () => {
 
 		mongoose.model('User', userSchema);
 
-		const itemSchema = new mongoose.Schema({
+		const itemSchema = new mongoose.EnhancedSchema({
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			createdAt: Date,
 			ignore: Boolean,
@@ -60,7 +60,7 @@ describe('derived', () => {
 
 		mongoose.model('Item', itemSchema);
 
-		const subItemSchema = new mongoose.Schema({
+		const subItemSchema = new mongoose.EnhancedSchema({
 			item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item' },
 		});
 
@@ -141,7 +141,7 @@ describe('derived', () => {
 	});
 
 	it('should derive sum', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			itemsViews: Number,
 		});
@@ -158,7 +158,7 @@ describe('derived', () => {
 
 		mongoose.model('User', userSchema);
 
-		const itemSchema = new mongoose.Schema({
+		const itemSchema = new mongoose.EnhancedSchema({
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			views: Number,
 		});
@@ -223,7 +223,7 @@ describe('derived', () => {
 	});
 
 	it('should sync derived fields', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			itemsViews: { type: Number, default: 0 },
 		});
@@ -240,7 +240,7 @@ describe('derived', () => {
 
 		mongoose.model('User', userSchema);
 
-		const itemSchema = new mongoose.Schema({
+		const itemSchema = new mongoose.EnhancedSchema({
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			views: Number,
 		});

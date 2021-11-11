@@ -25,7 +25,7 @@ describe('paginate', () => {
 	});
 
 	it('should paginate', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 

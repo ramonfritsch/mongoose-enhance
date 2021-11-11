@@ -25,7 +25,7 @@ describe('relationship', () => {
 	});
 
 	it('should delete using hasMany', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 
@@ -33,7 +33,7 @@ describe('relationship', () => {
 
 		mongoose.model('User', userSchema);
 
-		const itemSchema = new mongoose.Schema({
+		const itemSchema = new mongoose.EnhancedSchema({
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 
@@ -68,7 +68,7 @@ describe('relationship', () => {
 	});
 
 	it('should delete using manyToOne', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
 		});
@@ -77,7 +77,7 @@ describe('relationship', () => {
 
 		mongoose.model('User', userSchema);
 
-		const companySchema = new mongoose.Schema({
+		const companySchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 
@@ -130,7 +130,7 @@ describe('relationship', () => {
 	});
 
 	it('should sync relationships', async () => {
-		const userSchema = new mongoose.Schema({
+		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
 		});
@@ -140,13 +140,13 @@ describe('relationship', () => {
 
 		mongoose.model('User', userSchema);
 
-		const companySchema = new mongoose.Schema({
+		const companySchema = new mongoose.EnhancedSchema({
 			name: String,
 		});
 
 		mongoose.model('Company', companySchema);
 
-		const itemSchema = new mongoose.Schema({
+		const itemSchema = new mongoose.EnhancedSchema({
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 

@@ -1,4 +1,4 @@
-module.exports = (mongoose) => {
+module.exports = mongoose => {
 	function fillPages(data, maxPages) {
 		var surround = Math.floor(maxPages / 2);
 		var firstPage = maxPages ? Math.max(1, data.currentPage - surround) : 1;
@@ -32,8 +32,8 @@ module.exports = (mongoose) => {
 		}
 	}
 
-	mongoose.enhance.registerPlugin((schema) => {
-		schema.statics.paginate = function (options, callback) {
+	mongoose.enhance.registerGlobalPlugin(schema => {
+		schema.statics.paginate = function(options, callback) {
 			options = options || {};
 
 			const query = this.find(options.filters, options.optionalExpression);
@@ -48,17 +48,17 @@ module.exports = (mongoose) => {
 			const maxPages = parseInt(options.maxPages) || 10;
 			const skip = (currentPage - 1) * pageSize;
 
-			query.select = function () {
+			query.select = function() {
 				options.select = arguments[0];
 				return query;
 			};
 
-			query.sort = function () {
+			query.sort = function() {
 				options.sort = arguments[0];
 				return query;
 			};
 
-			query.exec = async function (callback) {
+			query.exec = async function(callback) {
 				try {
 					query.limit(pageSize).skip(skip);
 

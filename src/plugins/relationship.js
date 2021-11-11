@@ -1,6 +1,6 @@
 const pLimit = require('p-limit');
 
-module.exports = (mongoose) => {
+module.exports = mongoose => {
 	async function removeIfNotReferenced(localModel, foreignModel, localKey, entryOrEntryID) {
 		const count = await localModel.countDocuments({
 			[localKey]: mongoose.id(entryOrEntryID),
@@ -21,16 +21,16 @@ module.exports = (mongoose) => {
 
 	const allRelationships = [];
 
-	mongoose.enhance.registerPlugin((schema) => {
-		schema.hasMany = function (foreignModelName, foreignKey, localKey = '_id') {
-			schema.whenRemoved(async function () {
+	mongoose.enhance.registerGlobalPlugin(schema => {
+		schema.hasMany = function(foreignModelName, foreignKey, localKey = '_id') {
+			schema.whenRemoved(async function() {
 				const foreignModel = mongoose.model(foreignModelName);
 				const entries = await foreignModel.find({
 					[foreignKey]: this.get(localKey),
 				});
 
 				const limit = pLimit(5);
-				return Promise.all(entries.map((entry) => limit(() => entry.remove())));
+				return Promise.all(entries.map(entry => limit(() => entry.remove())));
 			});
 
 			mongoose.enhance.onceSchemasAreReady(() => {
@@ -45,8 +45,8 @@ module.exports = (mongoose) => {
 		};
 
 		// Remove if no one else references it
-		schema.manyToOne = function (foreignModelName, localKey, foreignKey = '_id') {
-			schema.whenPostModified(localKey, function () {
+		schema.manyToOne = function(foreignModelName, localKey, foreignKey = '_id') {
+			schema.whenPostModified(localKey, function() {
 				return removeIfNotReferenced(
 					mongoose.model(schema.modelName),
 					mongoose.model(foreignModelName),
@@ -55,7 +55,7 @@ module.exports = (mongoose) => {
 				);
 			});
 
-			schema.whenPostRemoved(function () {
+			schema.whenPostRemoved(function() {
 				return removeIfNotReferenced(
 					mongoose.model(schema.modelName),
 					mongoose.model(foreignModelName),
@@ -77,11 +77,11 @@ module.exports = (mongoose) => {
 	});
 
 	// Remove orphan entries
-	mongoose.enhance.syncRelationships = async function () {
+	mongoose.enhance.syncRelationships = async function() {
 		const limitRelationship = pLimit(2);
 
 		return Promise.all(
-			allRelationships.map((info) =>
+			allRelationships.map(info =>
 				limitRelationship(() => {
 					const localModel = mongoose.model(info.localModelName);
 					const foreignModel = mongoose.model(info.foreignModelName);
@@ -92,7 +92,7 @@ module.exports = (mongoose) => {
 							batchSize: 10000,
 							useMongooseAggCursor: true,
 						}),
-						async (entry) => {
+						async entry => {
 							if (info.type === 'hasMany') {
 								const count = await localModel.countDocuments({
 									[info.localKey]: entry.get(info.foreignKey),
