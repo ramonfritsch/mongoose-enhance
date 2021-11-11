@@ -29,8 +29,6 @@ module.exports = (mongoose) => {
 	};
 
 	mongoose.createModels = async function () {
-		globalPlugins = [];
-
 		await Promise.all(schemasReadyCallbacks.map((callback) => callback()));
 		schemasReadyCallbacks = [];
 

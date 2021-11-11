@@ -1,5 +1,3 @@
-const glob = require('glob');
-const path = require('path');
 const helpers = require('./helpers');
 const mongoose = require('mongoose');
 
@@ -25,9 +23,16 @@ mongoose.plugin((schema) => {
 	schema.options.usePushEach = true;
 });
 
-glob.sync('*.js', {
-	cwd: path.join(__dirname, 'plugins/'),
-}).forEach((file) => require('./plugins/' + file)(mongoose));
+require('./plugins/base')(mongoose);
+require('./plugins/derived')(mongoose);
+require('./plugins/ensureModel')(mongoose);
+require('./plugins/old')(mongoose);
+require('./plugins/paginate')(mongoose);
+require('./plugins/relationship')(mongoose);
+require('./plugins/types')(mongoose);
+require('./plugins/validators')(mongoose);
+require('./plugins/wasModified')(mongoose);
+require('./plugins/when')(mongoose);
 
 module.exports = mongoose;
 

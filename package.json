@@ -1,6 +1,6 @@
 {
 	"name": "mongoose-enhance",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "Helpful Mongoose enhancements",
 	"main": "src/index.js",
 	"scripts": {
@@ -9,7 +9,6 @@
 	"author": "Ramon Fritsch <ramonfritsch@gmail.com>",
 	"license": "MIT",
 	"dependencies": {
-		"glob": "^7.1.6",
 		"lodash": "^4.17.15",
 		"mongoose": "^5.9.2",
 		"mongoose-shortid-nodeps": "^0.6.5",
@@ -35,9 +34,9 @@
 		"testEnvironment": "node"
 	},
 	"devDependencies": {
-		"mongodb-memory-server": "^6.9.2",
 		"jest": "^26.6.3",
 		"jest-cli": "^26.6.3",
-		"jest-watch-typeahead": "^0.6.1"
+		"jest-watch-typeahead": "^0.6.1",
+		"mongodb-memory-server": "^6.9.2"
 	}
 }
