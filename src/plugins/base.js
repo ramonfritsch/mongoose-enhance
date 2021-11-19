@@ -1,4 +1,4 @@
-module.exports = mongoose => {
+module.exports = (mongoose) => {
 	let schemasReadyCallbacks = [];
 	let modelsReadyCallbacks = [];
 	let modelsToRegister = [];
@@ -13,11 +13,11 @@ module.exports = mongoose => {
 	};
 	mongoose.enhance.schemas = {};
 
-	mongoose.enhance.onceSchemasAreReady = callback => {
+	mongoose.enhance.onceSchemasAreReady = (callback) => {
 		schemasReadyCallbacks.push(callback);
 	};
 
-	mongoose.enhance.onceModelsAreReady = callback => {
+	mongoose.enhance.onceModelsAreReady = (callback) => {
 		modelsReadyCallbacks.push(callback);
 	};
 
@@ -34,11 +34,11 @@ module.exports = mongoose => {
 		mongoose.enhance.schemas[modelName] = schema;
 	};
 
-	mongoose.createModels = async function() {
+	mongoose.createModels = function () {
 		canCreatSchemas = false;
 		globalPlugins = [];
 
-		await Promise.all(schemasReadyCallbacks.map(callback => callback()));
+		schemasReadyCallbacks.map((callback) => callback());
 		schemasReadyCallbacks = [];
 
 		modelsToRegister.forEach(({ schema }) => schema.runPreCompileCallbacks());
@@ -48,16 +48,16 @@ module.exports = mongoose => {
 		});
 		modelsToRegister = [];
 
-		await Promise.all(modelsReadyCallbacks.map(callback => callback()));
+		modelsReadyCallbacks.map((callback) => callback());
 		modelsReadyCallbacks = [];
 
 		mongoose.model = originalModel.bind(mongoose);
 
-		mongoose.createModels = function() {};
+		mongoose.createModels = function () {};
 	};
 
 	// Run relationship and derived rules on all database
-	mongoose.enhance.sync = async function() {
+	mongoose.enhance.sync = async function () {
 		await mongoose.enhance.syncRelationships();
 		await mongoose.enhance.syncDerived();
 	};
@@ -80,7 +80,7 @@ module.exports = mongoose => {
 		}
 
 		runPreCompileCallbacks() {
-			this._preCompileCallbacks.forEach(callback => callback(this));
+			this._preCompileCallbacks.forEach((callback) => callback(this));
 			this._preCompileCallbacks = [];
 		}
 	}
