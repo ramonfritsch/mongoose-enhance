@@ -1,27 +1,17 @@
-const MongoMemory = require('mongodb-memory-server');
+const testMemoryServer = require('../__tests_utils__/testMemoryServer');
 
 jest.setTimeout(30000);
 
 let mongoose;
-let mongoMemoryServerInstance;
 
 describe('relationship', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = require('../../index');
-
-		mongoMemoryServerInstance = new MongoMemory.MongoMemoryServer();
-		const mongoMemoryServerURI = await mongoMemoryServerInstance.getUri();
-
-		await mongoose.connect(mongoMemoryServerURI, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-		});
+		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
 	});
 
 	afterEach(async () => {
-		await mongoose.disconnect();
-		mongoMemoryServerInstance.stop();
+		await testMemoryServer.closeMemoryServer(mongoose);
 	});
 
 	it('should delete using hasMany', async () => {
@@ -39,7 +29,7 @@ describe('relationship', () => {
 
 		mongoose.model('Item', itemSchema);
 
-		await mongoose.createModels();
+		mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');
@@ -83,7 +73,7 @@ describe('relationship', () => {
 
 		mongoose.model('Company', companySchema);
 
-		await mongoose.createModels();
+		mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Company = mongoose.model('Company');
@@ -152,7 +142,7 @@ describe('relationship', () => {
 
 		mongoose.model('Item', itemSchema);
 
-		await mongoose.createModels();
+		mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Company = mongoose.model('Company');

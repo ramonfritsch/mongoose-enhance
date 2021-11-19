@@ -1,27 +1,17 @@
-const MongoMemory = require('mongodb-memory-server');
+const testMemoryServer = require('../__tests_utils__/testMemoryServer');
 
 jest.setTimeout(30000);
 
 let mongoose;
-let mongoMemoryServerInstance;
 
 describe('derived', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = require('../../index');
-
-		mongoMemoryServerInstance = new MongoMemory.MongoMemoryServer();
-		const mongoMemoryServerURI = await mongoMemoryServerInstance.getUri();
-
-		await mongoose.connect(mongoMemoryServerURI, {
-			useNewUrlParser: true,
-			useUnifiedTopology: true,
-		});
+		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
 	});
 
 	afterEach(async () => {
-		await mongoose.disconnect();
-		mongoMemoryServerInstance.stop();
+		await testMemoryServer.closeMemoryServer(mongoose);
 	});
 
 	it('should derive count', async () => {
@@ -66,7 +56,7 @@ describe('derived', () => {
 
 		mongoose.model('SubItem', subItemSchema);
 
-		await mongoose.createModels();
+		mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');
@@ -165,7 +155,7 @@ describe('derived', () => {
 
 		mongoose.model('Item', itemSchema);
 
-		await mongoose.createModels();
+		mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');
@@ -247,7 +237,7 @@ describe('derived', () => {
 
 		mongoose.model('Item', itemSchema);
 
-		await mongoose.createModels();
+		mongoose.createModels();
 
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');

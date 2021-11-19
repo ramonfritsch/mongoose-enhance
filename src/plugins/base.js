@@ -3,9 +3,12 @@ module.exports = (mongoose) => {
 	let modelsReadyCallbacks = [];
 	let modelsToRegister = [];
 	let globalPlugins = [];
-	let canCreatSchemas = true;
 
 	mongoose.enhance.registerGlobalPlugin = (plugin, options) => {
+		if (!globalPlugins) {
+			throw new Error("Can't register global plugins after models are created");
+		}
+
 		globalPlugins.push({
 			plugin,
 			options,
@@ -14,11 +17,19 @@ module.exports = (mongoose) => {
 	mongoose.enhance.schemas = {};
 
 	mongoose.enhance.onceSchemasAreReady = (callback) => {
-		schemasReadyCallbacks.push(callback);
+		if (schemasReadyCallbacks) {
+			schemasReadyCallbacks.push(callback);
+		} else {
+			callback();
+		}
 	};
 
 	mongoose.enhance.onceModelsAreReady = (callback) => {
-		modelsReadyCallbacks.push(callback);
+		if (modelsReadyCallbacks) {
+			modelsReadyCallbacks.push(callback);
+		} else {
+			callback();
+		}
 	};
 
 	const originalModel = mongoose.model;
@@ -35,23 +46,22 @@ module.exports = (mongoose) => {
 	};
 
 	mongoose.createModels = function () {
-		canCreatSchemas = false;
-		globalPlugins = [];
+		globalPlugins = null;
 
 		schemasReadyCallbacks.map((callback) => callback());
-		schemasReadyCallbacks = [];
+		schemasReadyCallbacks = null;
 
 		modelsToRegister.forEach(({ schema }) => schema.runPreCompileCallbacks());
 
 		modelsToRegister.forEach(({ modelName, schema, otherArgs }) => {
 			originalModel.apply(mongoose, [modelName, schema, ...otherArgs]);
 		});
-		modelsToRegister = [];
-
-		modelsReadyCallbacks.map((callback) => callback());
-		modelsReadyCallbacks = [];
+		modelsToRegister = null;
 
 		mongoose.model = originalModel.bind(mongoose);
+
+		modelsReadyCallbacks.map((callback) => callback());
+		modelsReadyCallbacks = null;
 
 		mongoose.createModels = function () {};
 	};
@@ -68,11 +78,11 @@ module.exports = (mongoose) => {
 		constructor(...args) {
 			super(...args);
 
-			globalPlugins.forEach(({ plugin, options }) => plugin(this, options));
-
-			if (!canCreatSchemas) {
+			if (!globalPlugins) {
 				throw new Error('Cannot create EnhancedSchemas after models are created');
 			}
+
+			globalPlugins.forEach(({ plugin, options }) => plugin(this, options));
 		}
 
 		oncePreCompile(callback) {
