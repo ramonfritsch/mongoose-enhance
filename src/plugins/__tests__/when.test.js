@@ -104,6 +104,100 @@ describe('when', () => {
 		await newUser.save();
 
 		expectSequence(fn, 14);
+
+		await newUser.remove();
+
+		expect(fn).toBeCalledTimes(14);
+	});
+
+	it('should call whenSave callbacks', async () => {
+		const fn = jest.fn();
+
+		const userSchema = new mongoose.EnhancedSchema({
+			name: String,
+		});
+
+		userSchema.whenPostSave(function () {
+			fn(8);
+		});
+
+		userSchema.whenPostSave(function (next) {
+			fn(9);
+			setTimeout(() => {
+				fn(10);
+				next();
+			}, 100);
+		});
+		userSchema.whenPostSave(function () {
+			fn(11);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(12);
+					resolve();
+				}, 50),
+			);
+		});
+		// eslint-disable-next-line no-unused-vars
+		userSchema.whenPostSave(function (next) {
+			fn(13);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(14);
+					resolve();
+				}, 50),
+			);
+		});
+
+		userSchema.whenSave(function () {
+			fn(1);
+		});
+		userSchema.whenSave(function (next) {
+			fn(2);
+			setTimeout(() => {
+				fn(3);
+				next();
+			}, 100);
+		});
+		userSchema.whenSave(function () {
+			fn(4);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(5);
+					resolve();
+				}, 50),
+			);
+		});
+		// eslint-disable-next-line no-unused-vars
+		userSchema.whenSave(function (next) {
+			fn(6);
+			return new Promise((resolve) =>
+				setTimeout(() => {
+					fn(7);
+					resolve();
+				}, 50),
+			);
+		});
+
+		mongoose.model('User', userSchema);
+
+		mongoose.createModels();
+
+		const User = mongoose.model('User');
+
+		const newUser = await new User({
+			name: 'User Name',
+		}).save();
+
+		expectSequence(fn, 14);
+
+		newUser.name = 'Other Name';
+		await newUser.save();
+
+		expectSequence(fn, 28, 14);
+
+		await newUser.remove();
+
+		expect(fn).toBeCalledTimes(28);
 	});
 
 	it('should call whenModified callbacks', async () => {

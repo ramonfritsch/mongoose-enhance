@@ -1,17 +1,17 @@
 const _ = require('lodash');
 
-module.exports = mongoose => {
+module.exports = (mongoose) => {
 	function noop() {}
 
 	function wrapPreCallback(callback, fn) {
 		if (callback.length === 0) {
-			return function() {
+			return function () {
 				const doc = this;
 
 				return fn(doc, () => callback.call(doc), noop);
 			};
 		} else {
-			return function(next) {
+			return function (next) {
 				const doc = this;
 
 				return fn(doc, () => callback.call(doc, next), next);
@@ -21,21 +21,21 @@ module.exports = mongoose => {
 
 	function wrapPostCallback(callback, fn) {
 		if (callback.length === 0) {
-			return function(doc) {
+			return function (doc) {
 				return fn(doc, () => callback.call(doc), noop);
 			};
 		} else {
-			return function(doc, next) {
+			return function (doc, next) {
 				return fn(doc, () => callback.call(doc, next), next);
 			};
 		}
 	}
 
-	mongoose.enhance.registerGlobalPlugin(schema => {
-		schema.whenNew = function(callback) {
+	mongoose.enhance.registerGlobalPlugin((schema) => {
+		schema.whenNew = function (callback) {
 			schema.pre(
 				'save',
-				wrapPreCallback(callback, function(doc, callback, next) {
+				wrapPreCallback(callback, function (doc, callback, next) {
 					if (!doc.isNew) {
 						return next();
 					}
@@ -48,29 +48,29 @@ module.exports = mongoose => {
 		schema._whenPostNews = [];
 		schema._whenModifieds = [];
 
-		schema.oncePreCompile(function(schema) {
+		schema.oncePreCompile(function (schema) {
 			const keys = _.uniq(
 				schema._whenModifieds.reduce((sum, { keys }) => [...sum, ...keys], []),
 			);
 
-			schema.post('init', doc => {
+			schema.post('init', (doc) => {
 				if (doc.isNew) {
 					return;
 				}
 
-				keys.forEach(key => doc.setOld(key));
+				keys.forEach((key) => doc.setOld(key));
 			});
 
-			schema.pre('save', function() {
+			schema.pre('save', function () {
 				this.$locals.wasNew = this.isNew;
 				this.$locals.needsPostSave = false;
 
 				this.setWasModified();
 
-				keys.forEach(key => this.setWasModified(key));
+				keys.forEach((key) => this.setWasModified(key));
 			});
 
-			schema.post('save', function(doc) {
+			schema.post('save', function (doc) {
 				if (!doc.$locals.originalSave) {
 					doc.$locals.originalSave = doc.save;
 
@@ -85,7 +85,7 @@ module.exports = mongoose => {
 			schema._whenPostNews.forEach(({ callback }) => {
 				schema.post(
 					'save',
-					wrapPostCallback(callback, function(doc, callback, next) {
+					wrapPostCallback(callback, function (doc, callback, next) {
 						if (!doc.$locals.wasNew) {
 							return next();
 						}
@@ -102,13 +102,13 @@ module.exports = mongoose => {
 				hook.call(
 					schema,
 					'save',
-					wrapCallback(callback, function(doc, callback, next) {
+					wrapCallback(callback, function (doc, callback, next) {
 						if (doc.isNew || doc.$locals.wasNew) {
 							return next();
 						}
 
 						const isModified = keys.some(
-							key =>
+							(key) =>
 								(pre ? doc.isModified(key) : doc.wasModified(key)) &&
 								doc.getOld(key) !== doc.get(key),
 						);
@@ -122,8 +122,8 @@ module.exports = mongoose => {
 				);
 			});
 
-			schema.post('save', function(doc) {
-				keys.forEach(key => {
+			schema.post('save', function (doc) {
+				keys.forEach((key) => {
 					doc.setOld(key);
 					doc.clearWasModified(key);
 				});
@@ -146,14 +146,32 @@ module.exports = mongoose => {
 			schema._whenModifieds = [];
 		});
 
-		schema.whenPostNew = function(callback) {
+		schema.whenPostNew = function (callback) {
 			schema._whenPostNews.push({
 				callback,
 			});
 		};
 
-		schema.whenModified = function(keys, callback) {
-			keys = Array.isArray(keys) ? keys : [keys];
+		schema.whenSave = function (callback) {
+			schema.pre(
+				'save',
+				wrapPreCallback(callback, function (doc, callback) {
+					return callback();
+				}),
+			);
+		};
+
+		schema.whenPostSave = function (callback) {
+			schema.post(
+				'save',
+				wrapPostCallback(callback, function (doc, callback) {
+					return callback();
+				}),
+			);
+		};
+
+		schema.whenModified = function (keyOrKeys, callback) {
+			const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
 
 			schema._whenModifieds.push({
 				pre: true,
@@ -162,8 +180,8 @@ module.exports = mongoose => {
 			});
 		};
 
-		schema.whenPostModified = function(keys, callback) {
-			keys = Array.isArray(keys) ? keys : [keys];
+		schema.whenPostModified = function (keyOrKeys, callback) {
+			const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
 
 			schema._whenModifieds.push({
 				pre: false,
@@ -172,29 +190,29 @@ module.exports = mongoose => {
 			});
 		};
 
-		schema.whenModifiedOrNew = function(keys, callback) {
+		schema.whenModifiedOrNew = function (keys, callback) {
 			schema.whenNew.call(this, callback);
 			schema.whenModified.call(this, keys, callback);
 		};
 
-		schema.whenPostModifiedOrNew = function(keys, callback) {
+		schema.whenPostModifiedOrNew = function (keys, callback) {
 			schema.whenPostNew.call(this, callback);
 			schema.whenPostModified.call(this, keys, callback);
 		};
 
-		schema.whenRemoved = function(callback) {
+		schema.whenRemoved = function (callback) {
 			schema.pre(
 				'remove',
-				wrapPreCallback(callback, function(doc, callback) {
+				wrapPreCallback(callback, function (doc, callback) {
 					return callback();
 				}),
 			);
 		};
 
-		schema.whenPostRemoved = function(callback) {
+		schema.whenPostRemoved = function (callback) {
 			schema.post(
 				'remove',
-				wrapPostCallback(callback, function(doc, callback) {
+				wrapPostCallback(callback, function (doc, callback) {
 					return callback();
 				}),
 			);

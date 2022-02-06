@@ -1,6 +1,6 @@
 {
 	"name": "mongoose-enhance",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Helpful Mongoose enhancements",
 	"main": "src/index.js",
 	"scripts": {
