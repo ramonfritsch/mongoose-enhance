@@ -25,8 +25,8 @@ describe('derived', () => {
 		userSchema.plugin(mongoose.enhance.plugins.derived, [
 			{
 				method: 'count',
-				localKey: 'itemsCount',
-				model: 'Item',
+				localField: 'itemsCount',
+				foreignModelName: 'Item',
 				foreignKey: 'user',
 				query: (entry) => {
 					expect(entry).not.toBeNull();
@@ -139,8 +139,8 @@ describe('derived', () => {
 		userSchema.plugin(mongoose.enhance.plugins.derived, [
 			{
 				method: 'sum',
-				localKey: 'itemsViews',
-				model: 'Item',
+				localField: 'itemsViews',
+				foreignModelName: 'Item',
 				foreignKey: 'user',
 				foreignSumKey: 'views',
 			},
@@ -221,8 +221,8 @@ describe('derived', () => {
 		userSchema.plugin(mongoose.enhance.plugins.derived, [
 			{
 				method: 'sum',
-				localKey: 'itemsViews',
-				model: 'Item',
+				localField: 'itemsViews',
+				foreignModelName: 'Item',
 				foreignKey: 'user',
 				foreignSumKey: 'views',
 			},

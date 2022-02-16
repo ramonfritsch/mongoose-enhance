@@ -42,12 +42,11 @@ module.exports = (mongoose) => {
 			...(spec.query ? spec.query(entry) : {}),
 		});
 
-		// TODO: Rename localKey to localField, localKey is _id by default
-		if (entry.get(spec.localKey) === count) {
+		if (entry.get(spec.localField) === count) {
 			return;
 		}
 
-		entry.set(spec.localKey, count);
+		entry.set(spec.localField, count);
 
 		return save ? entry.save() : null;
 	}
@@ -74,11 +73,11 @@ module.exports = (mongoose) => {
 
 		const sum = entries.reduce((sum, entry) => sum + entry.get(spec.foreignSumKey), 0);
 
-		if (entry.get(spec.localKey) === sum) {
+		if (entry.get(spec.localField) === sum) {
 			return;
 		}
 
-		entry.set(spec.localKey, sum);
+		entry.set(spec.localField, sum);
 
 		return save ? entry.save() : null;
 	}
@@ -90,14 +89,13 @@ module.exports = (mongoose) => {
 	mongoose.enhance.plugins.derived = function (schema, options) {
 		mongoose.enhance.onceSchemasAreReady(() => {
 			options.forEach((spec) => {
-				// TODO: Rename model to foreignModelName
-				const foreignSchema = mongoose.enhance.schemas[spec.model];
+				const foreignSchema = mongoose.enhance.schemas[spec.foreignModelName];
 
 				if (spec.method === 'count' || spec.method === 'sum') {
 					const updateFn = spec.method === 'count' ? updateCount : updateSum;
 
 					schema.whenNew(function () {
-						this.set(spec.localKey, 0);
+						this.set(spec.localField, 0);
 					});
 
 					foreignSchema.whenPostModifiedOrNew(spec.foreignKey, async function () {
@@ -144,12 +142,12 @@ module.exports = (mongoose) => {
 
 					allRuns.push({
 						localModelName: schema.modelName,
-						localField: spec.localKey,
-						foreignModelName: spec.model,
+						localField: spec.localField,
+						foreignModelName: spec.foreignModelName,
 						run: async (entry) => {
 							return updateFn(
 								mongoose.model(schema.modelName),
-								mongoose.model(spec.model),
+								mongoose.model(spec.foreignModelName),
 								spec,
 								entry,
 								false /* save */,
