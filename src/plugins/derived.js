@@ -22,80 +22,81 @@ module.exports = (mongoose) => {
 	// 	return false;
 	// }
 
-	async function updateCount(localModel, foreignModel, spec, entryOrEntryID, save = true) {
-		if (!entryOrEntryID) {
-			return;
-		}
+	const createUpdater =
+		(queryFn) =>
+		async (localModel, foreignModel, spec, entryOrEntryID, save = true) => {
+			if (!entryOrEntryID) {
+				return;
+			}
 
-		// if (shouldSkip(localModel, foreignModel, spec, entryOrEntryID)) {
-		// 	return;
-		// }
+			// if (shouldSkip(localModel, foreignModel, spec, entryOrEntryID)) {
+			// 	return;
+			// }
 
-		const entry = await localModel.ensureModel(entryOrEntryID);
+			const entry = await localModel.ensureModel(entryOrEntryID);
 
-		if (!entry) {
-			return;
-		}
+			if (!entry) {
+				return;
+			}
 
+			const value = await queryFn(foreignModel, spec, entry);
+
+			if (entry.get(spec.localField) === value) {
+				return;
+			}
+
+			entry.set(spec.localField, value);
+
+			return save ? entry.save() : null;
+		};
+
+	const updateCount = createUpdater(async (foreignModel, spec, entry) => {
 		const count = await foreignModel.countDocuments({
-			[spec.foreignKey]: entry._id,
+			[spec.foreignKey]: entry.get(spec.localKey),
 			...(spec.query ? spec.query(entry) : {}),
 		});
 
-		if (entry.get(spec.localField) === count) {
-			return;
-		}
+		return count;
+	});
 
-		entry.set(spec.localField, count);
-
-		return save ? entry.save() : null;
-	}
-
-	async function updateSum(localModel, foreignModel, spec, entryOrEntryID, save = true) {
-		if (!entryOrEntryID) {
-			return;
-		}
-
-		// if (shouldSkip(localModel, foreignModel, spec, entryOrEntryID)) {
-		// 	return;
-		// }
-
-		const entry = await localModel.ensureModel(entryOrEntryID);
-
-		if (!entry) {
-			return;
-		}
-
+	const updateSum = createUpdater(async (foreignModel, spec, entry) => {
 		const entries = await foreignModel.find({
-			[spec.foreignKey]: entry._id,
+			[spec.foreignKey]: entry.get(spec.localKey),
 			...(spec.query ? spec.query(entry) : {}),
 		});
 
 		const sum = entries.reduce((sum, entry) => sum + entry.get(spec.foreignSumKey), 0);
 
-		if (entry.get(spec.localField) === sum) {
-			return;
-		}
+		return sum;
+	});
 
-		entry.set(spec.localField, sum);
-
-		return save ? entry.save() : null;
-	}
+	const updateCustom = createUpdater(async (foreignModel, spec, entry) => {
+		return await spec.query(entry);
+	});
 
 	const allRuns = [];
 	let synchingPromise = null;
-	let syncDone = {};
+	// let syncDone = {};
 
 	mongoose.enhance.plugins.derived = function (schema, options) {
 		mongoose.enhance.onceSchemasAreReady(() => {
 			options.forEach((spec) => {
+				const isNumeric = spec.method === 'count' || spec.method === 'sum';
 				const foreignSchema = mongoose.enhance.schemas[spec.foreignModelName];
 
-				if (spec.method === 'count' || spec.method === 'sum') {
-					const updateFn = spec.method === 'count' ? updateCount : updateSum;
+				spec.localKey = spec.localKey || '_id';
+				spec.defaultValue = spec.defaultValue || (isNumeric ? 0 : null);
+
+				if (spec.method === 'count' || spec.method === 'sum' || spec.method === 'custom') {
+					const updateFn =
+						spec.method === 'count'
+							? updateCount
+							: spec.method === 'sum'
+							? updateSum
+							: updateCustom;
 
 					schema.whenNew(function () {
-						this.set(spec.localField, 0);
+						this.set(spec.localField, spec.defaultValue);
 					});
 
 					foreignSchema.whenPostModifiedOrNew(spec.foreignKey, async function () {
@@ -128,7 +129,7 @@ module.exports = (mongoose) => {
 							),
 						);
 
-						return Promise.all(operations);
+						await Promise.all(operations);
 					});
 
 					foreignSchema.whenPostRemoved(function () {
@@ -223,7 +224,7 @@ module.exports = (mongoose) => {
 		let promise = synchingPromise;
 
 		synchingPromise = null;
-		syncDone = {};
+		// syncDone = {};
 
 		return promise;
 	};

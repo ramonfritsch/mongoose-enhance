@@ -15,11 +15,11 @@ let mongoose;
 describe('when', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
+		mongoose = await testMemoryServer.createMongoose();
 	});
 
 	afterEach(async () => {
-		await testMemoryServer.closeMemoryServer(mongoose);
+		await mongoose.disconnect();
 	});
 
 	it('should call whenNew callbacks', async () => {
@@ -96,16 +96,16 @@ describe('when', () => {
 
 		const User = mongoose.model('User');
 
-		const newUser = await new User({
+		const user = await new User({
 			name: 'User Name',
 		}).save();
 
-		newUser.name = 'Other Name';
-		await newUser.save();
+		user.name = 'Other Name';
+		await user.save();
 
 		expectSequence(fn, 14);
 
-		await newUser.remove();
+		await user.remove();
 
 		expect(fn).toBeCalledTimes(14);
 	});
@@ -184,18 +184,18 @@ describe('when', () => {
 
 		const User = mongoose.model('User');
 
-		const newUser = await new User({
+		const user = await new User({
 			name: 'User Name',
 		}).save();
 
 		expectSequence(fn, 14);
 
-		newUser.name = 'Other Name';
-		await newUser.save();
+		user.name = 'Other Name';
+		await user.save();
 
 		expectSequence(fn, 28, 14);
 
-		await newUser.remove();
+		await user.remove();
 
 		expect(fn).toBeCalledTimes(28);
 	});
@@ -288,7 +288,7 @@ describe('when', () => {
 
 		const User = mongoose.model('User');
 
-		let user = await new User({
+		const user = await new User({
 			name: 'Name 1',
 		}).save();
 
@@ -297,7 +297,7 @@ describe('when', () => {
 		user.name = 'Name 2';
 		await user.save();
 
-		user = await User.findById(user._id);
+		await user.restore();
 
 		user.name = 'Name 3';
 		await user.save();
@@ -306,7 +306,7 @@ describe('when', () => {
 		expect(fn2).nthCalledWith(1, 'Name 1', 'Name 2');
 		expect(fn2).nthCalledWith(2, 'Name 2', 'Name 3');
 
-		user = await User.findById(user._id);
+		await user.restore();
 
 		user.nested = {};
 		await user.save();
@@ -345,7 +345,7 @@ describe('when', () => {
 
 		expect(fn).toBeCalledTimes(30);
 
-		user = await User.findById(user._id);
+		await user.restore();
 		await user.save();
 
 		expect(fn).toBeCalledTimes(30);
@@ -427,7 +427,7 @@ describe('when', () => {
 
 		const User = mongoose.model('User');
 
-		let user = await new User({
+		const user = await new User({
 			name: 'Name 1',
 		}).save();
 
@@ -436,7 +436,7 @@ describe('when', () => {
 		user.name = 'Name 2';
 		await user.save();
 
-		user = await User.findById(user._id);
+		await user.restore();
 
 		user.name = 'Name 3';
 		await user.save();
@@ -450,7 +450,7 @@ describe('when', () => {
 
 		expect(fn).toBeCalledTimes(14 * 3);
 
-		user = await User.findById(user._id);
+		await user.restore();
 		await user.save();
 
 		expect(fn).toBeCalledTimes(14 * 3);
@@ -554,7 +554,7 @@ describe('when', () => {
 
 		expect(fn).toBeCalledTimes(14);
 
-		user = await User.findById(user._id);
+		await user.restore();
 
 		await new Item({
 			user: user._id,

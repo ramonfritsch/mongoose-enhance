@@ -7,11 +7,11 @@ let mongoose;
 describe('paginate', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
+		mongoose = await testMemoryServer.createMongoose();
 	});
 
 	afterEach(async () => {
-		await testMemoryServer.closeMemoryServer(mongoose);
+		await mongoose.disconnect();
 	});
 
 	it('should paginate', async () => {

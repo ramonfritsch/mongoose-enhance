@@ -1,11 +1,11 @@
-const MongoMemory = require('mongodb-memory-server');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const testMemoryServer = {
-	async createMongooseWithMemoryServer() {
+	async createMongoose() {
 		const mongoose = require('../../index');
 
-		mongoMemoryServerInstance = new MongoMemory.MongoMemoryServer();
-		const mongoMemoryServerURI = await mongoMemoryServerInstance.getUri();
+		const mongoMemoryServerInstance = await MongoMemoryServer.create();
+		const mongoMemoryServerURI = mongoMemoryServerInstance.getUri();
 
 		mongoose._mongoMemoryServerInstance = mongoMemoryServerInstance;
 
@@ -14,12 +14,15 @@ const testMemoryServer = {
 			useUnifiedTopology: true,
 		});
 
-		return mongoose;
-	},
+		const originalDisconnect = mongoose.disconnect.bind(mongoose);
 
-	async closeMemoryServer(mongoose) {
-		await mongoose.disconnect();
-		mongoose._mongoMemoryServerInstance.stop();
+		mongoose.disconnect = async () => {
+			await originalDisconnect();
+
+			mongoMemoryServerInstance.stop();
+		};
+
+		return mongoose;
 	},
 };
 

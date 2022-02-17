@@ -7,11 +7,11 @@ let mongoose;
 describe('when', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
+		mongoose = await testMemoryServer.createMongoose();
 	});
 
 	afterEach(async () => {
-		await testMemoryServer.closeMemoryServer(mongoose);
+		await mongoose.disconnect();
 	});
 
 	it('should fill out model', async () => {
@@ -97,6 +97,12 @@ describe('when', () => {
 
 		expect(company).toBe(null);
 		expect(Company.findOne).toBeCalledTimes(3);
+
+		await user.save();
+
+		await user.restore();
+
+		expect(String(user.company)).toBe(String(newCompany._id));
 	});
 
 	// TODO: Test when model is in place to see if mongoose saves it correctly, we can improve the API from ensureModel to doc.populate()...

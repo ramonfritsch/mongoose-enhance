@@ -7,11 +7,11 @@ let mongoose;
 describe('derived', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
+		mongoose = await testMemoryServer.createMongoose();
 	});
 
 	afterEach(async () => {
-		await testMemoryServer.closeMemoryServer(mongoose);
+		await mongoose.disconnect();
 	});
 
 	it('should derive count', async () => {
@@ -73,7 +73,7 @@ describe('derived', () => {
 			createdAt: new Date(),
 		}).save();
 
-		user = await User.findOne({ _id: user._id });
+		await user.restore();
 
 		expect(user.itemsCount).toBe(1);
 
@@ -97,16 +97,16 @@ describe('derived', () => {
 			ignore: true,
 		}).save();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsCount).toBe(1);
 		expect(user2.itemsCount).toBe(2);
 
 		await item1.remove();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsCount).toBe(0);
 		expect(user2.itemsCount).toBe(2);
@@ -120,8 +120,8 @@ describe('derived', () => {
 
 		await item2.remove();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsCount).toBe(0);
 		expect(user2.itemsCount).toBe(1);
@@ -171,7 +171,7 @@ describe('derived', () => {
 			views: 5,
 		}).save();
 
-		user = await User.findOne({ _id: user._id });
+		await user.restore();
 
 		expect(user.itemsViews).toBe(5);
 
@@ -189,27 +189,148 @@ describe('derived', () => {
 			views: 10,
 		}).save();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsViews).toBe(5);
 		expect(user2.itemsViews).toBe(17);
 
 		await item1.remove();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsViews).toBe(0);
 		expect(user2.itemsViews).toBe(17);
 
 		await item2.remove();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsViews).toBe(0);
 		expect(user2.itemsViews).toBe(10);
+	});
+
+	it('should derive custom', async () => {
+		const boardSchema = new mongoose.EnhancedSchema({
+			name: String,
+			thumbnail: String,
+		});
+
+		boardSchema.hasMany('Item', 'user');
+
+		boardSchema.plugin(mongoose.enhance.plugins.derived, [
+			{
+				method: 'custom',
+				localField: 'thumbnail',
+				foreignModelName: 'BoardItem',
+				foreignKey: 'board',
+				query: async (entry) => {
+					expect(entry).not.toBeNull();
+
+					const boardItems = await mongoose
+						.model('BoardItem')
+						.find({
+							board: entry._id,
+							ignore: { $ne: true },
+						})
+						.sort('-order')
+						.limit(1)
+						.exec();
+
+					if (boardItems && boardItems[0]) {
+						return boardItems[0].thumbnail;
+					}
+
+					return null;
+				},
+			},
+		]);
+
+		boardSchema.hasMany('BoardItem', 'board');
+
+		mongoose.model('Board', boardSchema);
+
+		const boardItemSchema = new mongoose.EnhancedSchema({
+			board: { type: mongoose.Schema.Types.ObjectId, ref: 'Board' },
+			order: Number,
+			thumbnail: String,
+			ignore: Boolean,
+		});
+
+		mongoose.model('BoardItem', boardItemSchema);
+
+		mongoose.createModels();
+
+		const Board = mongoose.model('Board');
+		const BoardItem = mongoose.model('BoardItem');
+
+		const board = await new Board({
+			name: 'Board Name',
+		}).save();
+
+		await board.restore();
+
+		expect(board.thumbnail).toBe(null);
+
+		const boardItem1 = await new BoardItem({
+			board: board._id,
+			order: 1,
+			thumbnail: 'thumbnail1.jpg',
+		}).save();
+
+		await board.restore();
+
+		expect(board.thumbnail).toBe(boardItem1.thumbnail);
+
+		const board2 = await new Board({
+			name: 'User Name 2',
+		}).save();
+
+		await board2.restore();
+
+		expect(board2.thumbnail).toBe(null);
+
+		const boardItem2 = await new BoardItem({
+			board: board2._id,
+			order: 1,
+			thumbnail: 'thumbnail2.jpg',
+		}).save();
+
+		await board.restore();
+		await board2.restore();
+
+		expect(board.thumbnail).toBe(boardItem1.thumbnail);
+		expect(board2.thumbnail).toBe(boardItem2.thumbnail);
+
+		const boardItem3 = await new BoardItem({
+			board: board2._id,
+			order: 2,
+			thumbnail: 'thumbnail3.jpg',
+		}).save();
+
+		await board.restore();
+		await board2.restore();
+
+		expect(board.thumbnail).toBe(boardItem1.thumbnail);
+		expect(board2.thumbnail).toBe(boardItem3.thumbnail);
+
+		await boardItem1.remove();
+
+		await board.restore();
+		await board2.restore();
+
+		expect(board.thumbnail).toBe(null);
+		expect(board2.thumbnail).toBe(boardItem3.thumbnail);
+
+		await boardItem3.remove();
+
+		await board.restore();
+		await board2.restore();
+
+		expect(board.thumbnail).toBe(null);
+		expect(board2.thumbnail).toBe(boardItem2.thumbnail);
 	});
 
 	it('should sync derived fields', async () => {
@@ -267,16 +388,16 @@ describe('derived', () => {
 			},
 		]);
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsViews).toBe(0);
 		expect(user2.itemsViews).toBe(0);
 
-		await mongoose.enhance.sync();
+		await mongoose.enhance.syncDerived();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsViews).toBe(5);
 		expect(user2.itemsViews).toBe(10);
@@ -286,8 +407,8 @@ describe('derived', () => {
 			views: 12,
 		}).save();
 
-		user = await User.findOne({ _id: user._id });
-		user2 = await User.findOne({ _id: user2._id });
+		await user.restore();
+		await user2.restore();
 
 		expect(user.itemsViews).toBe(5);
 		expect(user2.itemsViews).toBe(22);

@@ -33,6 +33,7 @@ require('./plugins/types')(mongoose);
 require('./plugins/validators')(mongoose);
 require('./plugins/wasModified')(mongoose);
 require('./plugins/when')(mongoose);
+require('./plugins/restore')(mongoose);
 
 module.exports = mongoose;
 

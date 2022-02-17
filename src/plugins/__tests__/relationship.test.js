@@ -7,11 +7,11 @@ let mongoose;
 describe('relationship', () => {
 	beforeEach(async () => {
 		jest.resetModules();
-		mongoose = await testMemoryServer.createMongooseWithMemoryServer();
+		mongoose = await testMemoryServer.createMongoose();
 	});
 
 	afterEach(async () => {
-		await testMemoryServer.closeMemoryServer(mongoose);
+		await mongoose.disconnect();
 	});
 
 	it('should delete using hasMany', async () => {
@@ -196,7 +196,7 @@ describe('relationship', () => {
 		expect(companiesCount).toBe(3);
 		expect(itemsCount).toBe(5);
 
-		await mongoose.enhance.sync();
+		await mongoose.enhance.syncRelationships();
 
 		companiesCount = await Company.countDocuments();
 		itemsCount = await Item.countDocuments();
