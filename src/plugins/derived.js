@@ -47,6 +47,9 @@ module.exports = (mongoose) => {
 
 			entry.set(spec.localField, value);
 
+			// TODO: perf: Should we use a barebones mongo update instead? This fires all the side effects
+			// or have an opt-in option to enable this behavior when we have a chain dependency, or even better
+			// detect when we have a chain dependency and use a the .save() method only if necessary.
 			return save ? entry.save() : null;
 		};
 

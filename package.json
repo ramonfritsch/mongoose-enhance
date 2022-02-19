@@ -12,9 +12,9 @@
 	"dependencies": {
 		"lodash": "^4.17.15",
 		"mongoose": "^5",
+		"mongoose-beautiful-unique-validation": "^7.1.1",
 		"mongoose-shortid-nodeps": "^0.6.5",
 		"mongoose-strip-html-tags": "^0.0.1",
-		"mongoose-unique-validator": "^2",
 		"normalize-url": "^5",
 		"p-limit": "^3",
 		"ucfirst": "^1",

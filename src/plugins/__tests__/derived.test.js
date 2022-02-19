@@ -8,13 +8,15 @@ describe('derived', () => {
 	beforeEach(async () => {
 		jest.resetModules();
 		mongoose = await testMemoryServer.createMongoose();
+
+		mongoose.set('debug', true);
 	});
 
 	afterEach(async () => {
 		await mongoose.disconnect();
 	});
 
-	it('should derive count', async () => {
+	it.only('should derive count', async () => {
 		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			itemsCount: Number,
@@ -77,57 +79,57 @@ describe('derived', () => {
 
 		expect(user.itemsCount).toBe(1);
 
-		let user2 = await new User({
-			name: 'User Name 2',
-		}).save();
+		// let user2 = await new User({
+		// 	name: 'User Name 2',
+		// }).save();
 
-		const item2 = await new Item({
-			user: user2._id,
-			createdAt: new Date(),
-		}).save();
+		// const item2 = await new Item({
+		// 	user: user2._id,
+		// 	createdAt: new Date(),
+		// }).save();
 
-		await new Item({
-			user: user2._id,
-			createdAt: new Date(),
-		}).save();
+		// await new Item({
+		// 	user: user2._id,
+		// 	createdAt: new Date(),
+		// }).save();
 
-		await new Item({
-			user: user2._id,
-			createdAt: new Date(),
-			ignore: true,
-		}).save();
+		// await new Item({
+		// 	user: user2._id,
+		// 	createdAt: new Date(),
+		// 	ignore: true,
+		// }).save();
 
-		await user.restore();
-		await user2.restore();
+		// await user.restore();
+		// await user2.restore();
 
-		expect(user.itemsCount).toBe(1);
-		expect(user2.itemsCount).toBe(2);
+		// expect(user.itemsCount).toBe(1);
+		// expect(user2.itemsCount).toBe(2);
 
-		await item1.remove();
+		// await item1.remove();
 
-		await user.restore();
-		await user2.restore();
+		// await user.restore();
+		// await user2.restore();
 
-		expect(user.itemsCount).toBe(0);
-		expect(user2.itemsCount).toBe(2);
+		// expect(user.itemsCount).toBe(0);
+		// expect(user2.itemsCount).toBe(2);
 
-		await new SubItem({
-			item: item2._id,
-		}).save();
+		// await new SubItem({
+		// 	item: item2._id,
+		// }).save();
 
-		let subItemsCount = await SubItem.countDocuments({});
-		expect(subItemsCount).toBe(1);
+		// let subItemsCount = await SubItem.countDocuments({});
+		// expect(subItemsCount).toBe(1);
 
-		await item2.remove();
+		// await item2.remove();
 
-		await user.restore();
-		await user2.restore();
+		// await user.restore();
+		// await user2.restore();
 
-		expect(user.itemsCount).toBe(0);
-		expect(user2.itemsCount).toBe(1);
+		// expect(user.itemsCount).toBe(0);
+		// expect(user2.itemsCount).toBe(1);
 
-		subItemsCount = await SubItem.countDocuments({});
-		expect(subItemsCount).toBe(0);
+		// subItemsCount = await SubItem.countDocuments({});
+		// expect(subItemsCount).toBe(0);
 	});
 
 	it('should derive sum', async () => {
