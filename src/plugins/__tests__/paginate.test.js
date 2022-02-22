@@ -27,7 +27,7 @@ describe('paginate', () => {
 
 		for (let i = 0; i < 100; i++) {
 			await new User({
-				name: 'Name' + (i + 1),
+				name: `Name${i + 1}`,
 			}).save();
 		}
 

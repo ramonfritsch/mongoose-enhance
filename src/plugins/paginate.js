@@ -1,15 +1,15 @@
 module.exports = mongoose => {
 	function fillPages(data, maxPages) {
-		var surround = Math.floor(maxPages / 2);
-		var firstPage = maxPages ? Math.max(1, data.currentPage - surround) : 1;
-		var padRight = Math.max((data.currentPage - surround - 1) * -1, 0);
-		var lastPage = maxPages
+		const surround = Math.floor(maxPages / 2);
+		let firstPage = maxPages ? Math.max(1, data.currentPage - surround) : 1;
+		const padRight = Math.max((data.currentPage - surround - 1) * -1, 0);
+		const lastPage = maxPages
 			? Math.min(data.totalPages, data.currentPage + surround + padRight)
 			: data.totalPages;
-		var padLeft = Math.max(data.currentPage + surround - lastPage, 0);
+		const padLeft = Math.max(data.currentPage + surround - lastPage, 0);
 		data.pages = [];
 		firstPage = Math.max(Math.min(firstPage, firstPage - padLeft), 1);
-		for (var i = firstPage; i <= lastPage; i++) {
+		for (let i = firstPage; i <= lastPage; i++) {
 			data.pages.push({
 				isCurrent: data.currentPage == i,
 				page: i,

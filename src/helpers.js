@@ -25,21 +25,21 @@ const helpers = {
 		}
 	},
 	validation: {
-		isEmail: function (email) {
+		isEmail (email) {
 			if (!email) {
 				return false;
 			}
 
 			return validator.isEmail(email);
 		},
-		formatEmail: function (email) {
+		formatEmail (email) {
 			if (!email) {
 				return null;
 			}
 
 			return String(email).toLowerCase();
 		},
-		isUsername: function (username, type) {
+		isUsername (username, type) {
 			//Instagram: 30, Twitter: 15, Tumblr: 32, Facebook: 50
 
 			if (!username) {
@@ -54,14 +54,14 @@ const helpers = {
 
 			return false;
 		},
-		formatUsername: function (username /*, type*/) {
+		formatUsername (username /*, type*/) {
 			if (!username) {
 				return null;
 			}
 
 			return String(String(username).split('@').join('').split(' ')[0]).toLowerCase();
 		},
-		formatURL: function (baseURL, pathname) {
+		formatURL (baseURL, pathname) {
 			if (arguments.length === 1) {
 				pathname = baseURL;
 				baseURL = null;
@@ -74,10 +74,10 @@ const helpers = {
 
 			if (baseURL) {
 				if (pathname.indexOf('://') == -1 || pathname.indexOf('://') > 5) {
-					var parsed = url.parse(baseURL);
+					const parsed = url.parse(baseURL);
 
 					if (parsed.host) {
-						var pathnameParsed = url.parse(pathname);
+						const pathnameParsed = url.parse(pathname);
 
 						parsed.protocol = parsed.protocol || 'http';
 						parsed.pathname = path.join(parsed.pathname, pathnameParsed.pathname);
@@ -89,7 +89,7 @@ const helpers = {
 				}
 			}
 
-			var normalized = '';
+			let normalized = '';
 
 			try {
 				normalized = normalizeURL(pathname, {
@@ -100,7 +100,7 @@ const helpers = {
 
 			return normalized;
 		},
-		isURL: function (url) {
+		isURL (url) {
 			return validator.isURL(url, {
 				protocols: ['http', 'https'],
 				allow_underscores: true,

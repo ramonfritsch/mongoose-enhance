@@ -9,14 +9,14 @@ describe('derived', () => {
 		jest.resetModules();
 		mongoose = await testMemoryServer.createMongoose();
 
-		mongoose.set('debug', true);
+		// mongoose.set('debug', true);
 	});
 
 	afterEach(async () => {
 		await mongoose.disconnect();
 	});
 
-	it.only('should derive count', async () => {
+	it('should derive count', async () => {
 		const userSchema = new mongoose.EnhancedSchema({
 			name: String,
 			itemsCount: Number,
@@ -64,7 +64,7 @@ describe('derived', () => {
 		const Item = mongoose.model('Item');
 		const SubItem = mongoose.model('SubItem');
 
-		let user = await new User({
+		const user = await new User({
 			name: 'User Name',
 		}).save();
 
@@ -79,57 +79,57 @@ describe('derived', () => {
 
 		expect(user.itemsCount).toBe(1);
 
-		// let user2 = await new User({
-		// 	name: 'User Name 2',
-		// }).save();
+		const user2 = await new User({
+			name: 'User Name 2',
+		}).save();
 
-		// const item2 = await new Item({
-		// 	user: user2._id,
-		// 	createdAt: new Date(),
-		// }).save();
+		const item2 = await new Item({
+			user: user2._id,
+			createdAt: new Date(),
+		}).save();
 
-		// await new Item({
-		// 	user: user2._id,
-		// 	createdAt: new Date(),
-		// }).save();
+		await new Item({
+			user: user2._id,
+			createdAt: new Date(),
+		}).save();
 
-		// await new Item({
-		// 	user: user2._id,
-		// 	createdAt: new Date(),
-		// 	ignore: true,
-		// }).save();
+		await new Item({
+			user: user2._id,
+			createdAt: new Date(),
+			ignore: true,
+		}).save();
 
-		// await user.restore();
-		// await user2.restore();
+		await user.restore();
+		await user2.restore();
 
-		// expect(user.itemsCount).toBe(1);
-		// expect(user2.itemsCount).toBe(2);
+		expect(user.itemsCount).toBe(1);
+		expect(user2.itemsCount).toBe(2);
 
-		// await item1.remove();
+		await item1.remove();
 
-		// await user.restore();
-		// await user2.restore();
+		await user.restore();
+		await user2.restore();
 
-		// expect(user.itemsCount).toBe(0);
-		// expect(user2.itemsCount).toBe(2);
+		expect(user.itemsCount).toBe(0);
+		expect(user2.itemsCount).toBe(2);
 
-		// await new SubItem({
-		// 	item: item2._id,
-		// }).save();
+		await new SubItem({
+			item: item2._id,
+		}).save();
 
-		// let subItemsCount = await SubItem.countDocuments({});
-		// expect(subItemsCount).toBe(1);
+		let subItemsCount = await SubItem.countDocuments({});
+		expect(subItemsCount).toBe(1);
 
-		// await item2.remove();
+		await item2.remove();
 
-		// await user.restore();
-		// await user2.restore();
+		await user.restore();
+		await user2.restore();
 
-		// expect(user.itemsCount).toBe(0);
-		// expect(user2.itemsCount).toBe(1);
+		expect(user.itemsCount).toBe(0);
+		expect(user2.itemsCount).toBe(1);
 
-		// subItemsCount = await SubItem.countDocuments({});
-		// expect(subItemsCount).toBe(0);
+		subItemsCount = await SubItem.countDocuments({});
+		expect(subItemsCount).toBe(0);
 	});
 
 	it('should derive sum', async () => {
@@ -162,7 +162,7 @@ describe('derived', () => {
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');
 
-		let user = await new User({
+		const user = await new User({
 			name: 'User Name',
 		}).save();
 
@@ -177,7 +177,7 @@ describe('derived', () => {
 
 		expect(user.itemsViews).toBe(5);
 
-		let user2 = await new User({
+		const user2 = await new User({
 			name: 'User Name 2',
 		}).save();
 
@@ -365,11 +365,11 @@ describe('derived', () => {
 		const User = mongoose.model('User');
 		const Item = mongoose.model('Item');
 
-		let user = await new User({
+		const user = await new User({
 			name: 'User Name',
 		}).save();
 
-		let user2 = await new User({
+		const user2 = await new User({
 			name: 'User Name 2',
 		}).save();
 
@@ -414,5 +414,94 @@ describe('derived', () => {
 
 		expect(user.itemsViews).toBe(5);
 		expect(user2.itemsViews).toBe(22);
+	});
+
+	it('should update on chain dependencies', async () => {
+		const fn = jest.fn();
+
+		const userSchema = new mongoose.EnhancedSchema({
+			name: String,
+			itemsCount: Number,
+		});
+
+		userSchema.plugin(mongoose.enhance.plugins.derived, [
+			{
+				method: 'sum',
+				localField: 'itemsCount',
+				foreignModelName: 'Board',
+				foreignKey: 'user',
+				foreignSumKey: 'itemsCount',
+			},
+		]);
+
+		userSchema.whenPostSave(() => {
+			fn();
+		});
+
+		userSchema.hasMany('Board', 'user');
+
+		mongoose.model('User', userSchema);
+
+		const boardSchema = new mongoose.EnhancedSchema({
+			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+			itemsCount: Number,
+		});
+
+		boardSchema.plugin(mongoose.enhance.plugins.derived, [
+			{
+				method: 'count',
+				localField: 'itemsCount',
+				foreignModelName: 'Item',
+				foreignKey: 'board',
+			},
+		]);
+
+		boardSchema.hasMany('Item', 'board');
+
+		mongoose.model('Board', boardSchema);
+
+		const itemSchema = new mongoose.EnhancedSchema({
+			board: { type: mongoose.Schema.Types.ObjectId, ref: 'Board' },
+		});
+
+		mongoose.model('Item', itemSchema);
+
+		mongoose.createModels();
+
+		const User = mongoose.model('User');
+		const Board = mongoose.model('Board');
+		const Item = mongoose.model('Item');
+
+		const user = await new User({
+			name: 'User Name',
+		}).save();
+
+		const board = await new Board({
+			user: user._id,
+		}).save();
+
+		await user.restore();
+		expect(user.itemsCount).toBe(0);
+		expect(fn).toHaveBeenCalledTimes(1);
+
+		const item = await new Item({
+			board: board._id,
+		}).save();
+
+		await user.restore();
+		await board.restore();
+
+		expect(user.itemsCount).toBe(1);
+		expect(fn).toHaveBeenCalledTimes(2);
+		expect(board.itemsCount).toBe(1);
+
+		await item.remove();
+
+		await user.restore();
+		await board.restore();
+
+		expect(user.itemsCount).toBe(0);
+		expect(fn).toHaveBeenCalledTimes(3);
+		expect(board.itemsCount).toBe(0);
 	});
 });

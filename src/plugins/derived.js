@@ -50,7 +50,9 @@ module.exports = (mongoose) => {
 			// TODO: perf: Should we use a barebones mongo update instead? This fires all the side effects
 			// or have an opt-in option to enable this behavior when we have a chain dependency, or even better
 			// detect when we have a chain dependency and use a the .save() method only if necessary.
-			return save ? entry.save() : null;
+			const r = save ? await entry.save() : null;
+
+			return r;
 		};
 
 	const updateCount = createUpdater(async (foreignModel, spec, entry) => {
@@ -77,7 +79,7 @@ module.exports = (mongoose) => {
 		return await spec.query(entry);
 	});
 
-	const allRuns = [];
+	const allDeriveds = [];
 	let synchingPromise = null;
 	// let syncDone = {};
 
@@ -102,7 +104,13 @@ module.exports = (mongoose) => {
 						this.set(spec.localField, spec.defaultValue);
 					});
 
-					foreignSchema.whenPostModifiedOrNew(spec.foreignKey, async function () {
+					const watchedFields = [spec.foreignKey];
+
+					if (spec.method === 'sum') {
+						watchedFields.push(spec.foreignSumKey);
+					}
+
+					foreignSchema.whenPostModifiedOrNew(watchedFields, async function () {
 						if (synchingPromise) {
 							return;
 						}
@@ -144,10 +152,9 @@ module.exports = (mongoose) => {
 						);
 					});
 
-					allRuns.push({
+					allDeriveds.push({
 						localModelName: schema.modelName,
-						localField: spec.localField,
-						foreignModelName: spec.foreignModelName,
+						spec,
 						run: async (entry) => {
 							return updateFn(
 								mongoose.model(schema.modelName),
@@ -170,7 +177,7 @@ module.exports = (mongoose) => {
 		}
 
 		synchingPromise = new Promise((resolve, reject) => {
-			const runsByModelName = allRuns.reduce((sum, info) => {
+			const runsByModelName = allDeriveds.reduce((sum, info) => {
 				if (!sum[info.localModelName]) {
 					sum[info.localModelName] = [];
 				}

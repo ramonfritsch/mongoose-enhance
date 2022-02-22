@@ -21,13 +21,9 @@ module.exports = (mongoose) => {
 
 	function wrapPostCallback(callback, fn) {
 		if (callback.length === 0) {
-			return function (doc) {
-				return fn(doc, () => callback.call(doc), noop);
-			};
+			return (doc) => fn(doc, () => callback.call(doc), noop);
 		} else {
-			return function (doc, next) {
-				return fn(doc, () => callback.call(doc, next), next);
-			};
+			return (doc, next) => fn(doc, () => callback.call(doc, next), next);
 		}
 	}
 
@@ -155,19 +151,25 @@ module.exports = (mongoose) => {
 		schema.whenSave = function (callback) {
 			schema.pre(
 				'save',
-				wrapPreCallback(callback, function (doc, callback) {
-					return callback();
-				}),
+				wrapPreCallback(callback, (doc, callback) => callback()),
 			);
 		};
 
 		schema.whenPostSave = function (callback) {
 			schema.post(
 				'save',
-				wrapPostCallback(callback, function (doc, callback) {
-					return callback();
-				}),
+				wrapPostCallback(callback, (doc, callback) => callback()),
 			);
+		};
+
+		schema.whenSaveError = function (callback) {
+			schema.post('save', function (error, doc, next) {
+				if (callback.length === 1) {
+					return callback.call(doc, error);
+				} else {
+					return callback.call(doc, error, next);
+				}
+			});
 		};
 
 		schema.whenModified = function (keyOrKeys, callback) {
@@ -203,18 +205,14 @@ module.exports = (mongoose) => {
 		schema.whenRemoved = function (callback) {
 			schema.pre(
 				'remove',
-				wrapPreCallback(callback, function (doc, callback) {
-					return callback();
-				}),
+				wrapPreCallback(callback, (doc, callback) => callback()),
 			);
 		};
 
 		schema.whenPostRemoved = function (callback) {
 			schema.post(
 				'remove',
-				wrapPostCallback(callback, function (doc, callback) {
-					return callback();
-				}),
+				wrapPostCallback(callback, (doc, callback) => callback()),
 			);
 		};
 	});
