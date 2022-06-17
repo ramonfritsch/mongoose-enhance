@@ -93,8 +93,9 @@ const helpers = {
 
 			try {
 				normalized = normalizeURL(pathname, {
-					stripFragment: false,
 					removeTrailingSlash: false,
+					sortQueryParameters: false,
+					stripHash: false
 				});
 			} catch (e) {}
 
