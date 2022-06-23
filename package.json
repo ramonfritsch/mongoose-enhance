@@ -5,7 +5,8 @@
 	"main": "src/index.js",
 	"scripts": {
 		"dev:test": "jest --watch",
-		"test": "jest"
+		"test": "jest",
+		"postinstall": "patch-package"
 	},
 	"author": "Ramon Fritsch <ramonfritsch@gmail.com>",
 	"license": "MIT",
@@ -17,6 +18,8 @@
 		"mongoose-strip-html-tags": "^0.0.1",
 		"normalize-url": "^5",
 		"p-limit": "^3",
+		"patch-package": "^6.4.7",
+		"postinstall-postinstall": "^2.1.0",
 		"ucfirst": "^1",
 		"validator": "^13"
 	},

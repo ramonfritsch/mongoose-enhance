@@ -1,0 +1,18 @@
+diff --git a/node_modules/normalize-url/index.js b/node_modules/normalize-url/index.js
+index 20c8e36..36aee07 100644
+--- a/node_modules/normalize-url/index.js
++++ b/node_modules/normalize-url/index.js
+@@ -125,13 +125,6 @@ const normalizeUrl = (urlString, options) => {
+ 		urlObj.pathname = urlObj.pathname.replace(/(?<!\b(?:[a-z][a-z\d+\-.]{1,50}:))\/{2,}/g, '/');
+ 	}
+ 
+-	// Decode URI octets
+-	if (urlObj.pathname) {
+-		try {
+-			urlObj.pathname = decodeURI(urlObj.pathname);
+-		} catch (_) {}
+-	}
+-
+ 	// Remove directory index
+ 	if (options.removeDirectoryIndex === true) {
+ 		options.removeDirectoryIndex = [/^index\.[a-z]+$/];
