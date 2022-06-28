@@ -85,6 +85,23 @@ module.exports = (mongoose) => {
 
 	mongoose.enhance.plugins.derived = function (schema, options) {
 		mongoose.enhance.onceSchemasAreReady(() => {
+			schema.methods.syncDerived = async function () {
+				const model = mongoose.model(schema.modelName);
+				const limitRun = pLimit(6);
+
+				const infos = allDeriveds.filter(
+					(info) => info.localModelName === schema.modelName,
+				);
+
+				await Promise.all(infos.map(({ run }) => limitRun(() => run(this))));
+
+				if (this.isModified()) {
+					await model.collection.updateOne({ _id: this._id }, this.getChanges(), {
+						upsert: false,
+					});
+				}
+			};
+
 			options.forEach((spec) => {
 				const isNumeric = spec.method === 'count' || spec.method === 'sum';
 				const foreignSchema = mongoose.enhance.schemas[spec.foreignModelName];
@@ -177,7 +194,7 @@ module.exports = (mongoose) => {
 		}
 
 		synchingPromise = new Promise((resolve, reject) => {
-			const runsByModelName = allDeriveds.reduce((sum, info) => {
+			const infosByModelName = allDeriveds.reduce((sum, info) => {
 				if (!sum[info.localModelName]) {
 					sum[info.localModelName] = [];
 				}
@@ -191,10 +208,10 @@ module.exports = (mongoose) => {
 			const limitRun = pLimit(60);
 
 			Promise.all(
-				Object.keys(runsByModelName).map((localModelName) =>
+				Object.keys(infosByModelName).map((localModelName) =>
 					limitModel(() => {
 						const model = mongoose.model(localModelName);
-						const runs = runsByModelName[localModelName];
+						const infos = infosByModelName[localModelName];
 
 						let count = 0;
 
@@ -210,7 +227,7 @@ module.exports = (mongoose) => {
 								}
 
 								await Promise.all(
-									runs.map(({ run }) => limitRun(() => run(entry))),
+									infos.map(({ run }) => limitRun(() => run(entry))),
 								);
 
 								if (entry.isModified()) {

@@ -504,4 +504,75 @@ describe('derived', () => {
 		expect(fn).toHaveBeenCalledTimes(3);
 		expect(board.itemsCount).toBe(0);
 	});
+
+	it('should sync individual model', async () => {
+		const userSchema = new mongoose.EnhancedSchema({
+			name: String,
+			itemsCount: Number,
+		});
+
+		userSchema.hasMany('Item', 'user');
+
+		userSchema.plugin(mongoose.enhance.plugins.derived, [
+			{
+				method: 'count',
+				localField: 'itemsCount',
+				foreignModelName: 'Item',
+				foreignKey: 'user',
+				query: (entry) => {
+					expect(entry).not.toBeNull();
+
+					return {
+						ignore: { $ne: true },
+					};
+				},
+			},
+		]);
+
+		mongoose.model('User', userSchema);
+
+		const itemSchema = new mongoose.EnhancedSchema({
+			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+			createdAt: Date,
+			ignore: Boolean,
+		});
+
+		mongoose.model('Item', itemSchema);
+
+		mongoose.createModels();
+
+		const User = mongoose.model('User');
+		const Item = mongoose.model('Item');
+
+		const user = await new User({
+			name: 'User Name',
+		}).save();
+
+		expect(user.itemsCount).toBe(0);
+
+		const item1 = await new Item({
+			user: user._id,
+			createdAt: new Date(),
+			ignore: true,
+		}).save();
+
+		await user.restore();
+
+		expect(user.itemsCount).toBe(0);
+
+		item1.ignore = false;
+		await item1.save();
+
+		await user.restore();
+
+		expect(user.itemsCount).toBe(0);
+
+		await user.syncDerived();
+
+		expect(user.itemsCount).toBe(1);
+
+		await user.restore();
+
+		expect(user.itemsCount).toBe(1);
+	});
 });
