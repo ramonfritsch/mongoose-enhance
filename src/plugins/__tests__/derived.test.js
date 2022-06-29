@@ -567,8 +567,9 @@ describe('derived', () => {
 
 		expect(user.itemsCount).toBe(0);
 
-		await user.syncDerived();
+		const user2 = await user.syncDerived();
 
+		expect(user2).toBe(user);
 		expect(user.itemsCount).toBe(1);
 
 		await user.restore();

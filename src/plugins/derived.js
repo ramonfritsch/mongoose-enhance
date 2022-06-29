@@ -100,6 +100,8 @@ module.exports = (mongoose) => {
 						upsert: false,
 					});
 				}
+
+				return this;
 			};
 
 			options.forEach((spec) => {
