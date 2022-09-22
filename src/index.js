@@ -18,7 +18,6 @@ Object.keys(helpers).forEach(
 require('mongoose-strip-html-tags')(mongoose);
 require('mongoose-shortid-nodeps');
 
-mongoose.set('useCreateIndex', true);
 mongoose.plugin((schema) => {
 	schema.options.usePushEach = true;
 });
@@ -37,5 +36,5 @@ require('./plugins/restore')(mongoose);
 
 module.exports = mongoose;
 
-// TODO: function to run all hooks on existig database. derived and relationship needs it
+// TODO: function to run all hooks on existing database. derived and relationship needs it
 // TODO: #270 Run script to clean children with missing parent for hasMany, hasOneShared
