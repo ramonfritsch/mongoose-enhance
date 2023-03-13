@@ -1,8 +1,9 @@
-const testMemoryServer = require('../__tests_utils__/testMemoryServer');
+import { EnhancedModel, ExtractEntryType, ObjectId, PluginDerivedMethods } from '..';
+import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
 
-let mongoose;
+let mongoose: Awaited<ReturnType<typeof testMemoryServer.createMongoose>>;
 
 describe('derived', () => {
 	beforeEach(async () => {
@@ -17,14 +18,19 @@ describe('derived', () => {
 	});
 
 	it('should derive count', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			itemsCount?: number;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			itemsCount: Number,
 		});
 
 		userSchema.hasMany('Item', 'user');
 
-		userSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(userSchema, [
 			{
 				method: 'count',
 				localField: 'itemsCount',
@@ -40,9 +46,15 @@ describe('derived', () => {
 			},
 		]);
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+			createdAt?: Date;
+			ignore?: boolean;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			createdAt: Date,
 			ignore: Boolean,
@@ -50,19 +62,17 @@ describe('derived', () => {
 
 		itemSchema.hasMany('SubItem', 'item');
 
-		mongoose.model('Item', itemSchema);
+		const Item = mongoose.model(itemSchema);
 
-		const subItemSchema = new mongoose.EnhancedSchema({
+		type SubitemModel = EnhancedModel<{
+			item?: ObjectId | ExtractEntryType<typeof Item>;
+		}>;
+
+		const subItemSchema = mongoose.createSchema<SubitemModel>('SubItem', {
 			item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item' },
 		});
 
-		mongoose.model('SubItem', subItemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Item = mongoose.model('Item');
-		const SubItem = mongoose.model('SubItem');
+		const SubItem = mongoose.model(subItemSchema);
 
 		const user = await new User({
 			name: 'User Name',
@@ -133,12 +143,17 @@ describe('derived', () => {
 	});
 
 	it('should derive sum', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			itemsViews?: number;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			itemsViews: Number,
 		});
 
-		userSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(userSchema, [
 			{
 				method: 'sum',
 				localField: 'itemsViews',
@@ -148,19 +163,19 @@ describe('derived', () => {
 			},
 		]);
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+			views?: number;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			views: Number,
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		const user = await new User({
 			name: 'User Name',
@@ -215,14 +230,19 @@ describe('derived', () => {
 	});
 
 	it('should derive custom', async () => {
-		const boardSchema = new mongoose.EnhancedSchema({
+		type BoardModel = EnhancedModel<{
+			name?: string;
+			thumbnail?: string;
+		}>;
+
+		const boardSchema = mongoose.createSchema<BoardModel>('Board', {
 			name: String,
 			thumbnail: String,
 		});
 
 		boardSchema.hasMany('Item', 'user');
 
-		boardSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(boardSchema, [
 			{
 				method: 'custom',
 				localField: 'thumbnail',
@@ -232,7 +252,7 @@ describe('derived', () => {
 					expect(entry).not.toBeNull();
 
 					const boardItems = await mongoose
-						.model('BoardItem')
+						.model<BoardItemModel>('BoardItem')
 						.find({
 							board: entry._id,
 							ignore: { $ne: true },
@@ -252,21 +272,23 @@ describe('derived', () => {
 
 		boardSchema.hasMany('BoardItem', 'board');
 
-		mongoose.model('Board', boardSchema);
+		const Board = mongoose.model(boardSchema);
 
-		const boardItemSchema = new mongoose.EnhancedSchema({
+		type BoardItemModel = EnhancedModel<{
+			board?: ObjectId | ExtractEntryType<typeof Board>;
+			order?: number;
+			thumbnail?: string;
+			ignore?: boolean;
+		}>;
+
+		const boardItemSchema = mongoose.createSchema<BoardItemModel>('BoardItem', {
 			board: { type: mongoose.Schema.Types.ObjectId, ref: 'Board' },
 			order: Number,
 			thumbnail: String,
 			ignore: Boolean,
 		});
 
-		mongoose.model('BoardItem', boardItemSchema);
-
-		mongoose.createModels();
-
-		const Board = mongoose.model('Board');
-		const BoardItem = mongoose.model('BoardItem');
+		const BoardItem = mongoose.model(boardItemSchema);
 
 		const board = await new Board({
 			name: 'Board Name',
@@ -336,12 +358,17 @@ describe('derived', () => {
 	});
 
 	it('should sync derived fields', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			itemsViews?: number;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			itemsViews: { type: Number, default: 0 },
 		});
 
-		userSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(userSchema, [
 			{
 				method: 'sum',
 				localField: 'itemsViews',
@@ -351,19 +378,19 @@ describe('derived', () => {
 			},
 		]);
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+			views?: number;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			views: Number,
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		const user = await new User({
 			name: 'User Name',
@@ -373,9 +400,7 @@ describe('derived', () => {
 			name: 'User Name 2',
 		}).save();
 
-		const db = mongoose.connection.client.db();
-
-		await db.collection('items').insertMany([
+		await Item.collection.insertMany([
 			{
 				user: user._id,
 				views: 2,
@@ -419,12 +444,17 @@ describe('derived', () => {
 	it('should update on chain dependencies', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			itemsCount?: number;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			itemsCount: Number,
 		});
 
-		userSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(userSchema, [
 			{
 				method: 'sum',
 				localField: 'itemsCount',
@@ -440,14 +470,19 @@ describe('derived', () => {
 
 		userSchema.hasMany('Board', 'user');
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const boardSchema = new mongoose.EnhancedSchema({
+		type BoardModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+			itemsCount?: number;
+		}>;
+
+		const boardSchema = mongoose.createSchema<BoardModel>('Board', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			itemsCount: Number,
 		});
 
-		boardSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(boardSchema, [
 			{
 				method: 'count',
 				localField: 'itemsCount',
@@ -458,19 +493,17 @@ describe('derived', () => {
 
 		boardSchema.hasMany('Item', 'board');
 
-		mongoose.model('Board', boardSchema);
+		const Board = mongoose.model(boardSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			board?: ObjectId | ExtractEntryType<typeof Board>;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			board: { type: mongoose.Schema.Types.ObjectId, ref: 'Board' },
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Board = mongoose.model('Board');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		const user = await new User({
 			name: 'User Name',
@@ -506,14 +539,22 @@ describe('derived', () => {
 	});
 
 	it('should sync individual model', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<
+			{
+				name?: string;
+				itemsCount?: number;
+			},
+			PluginDerivedMethods
+		>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			itemsCount: Number,
 		});
 
 		userSchema.hasMany('Item', 'user');
 
-		userSchema.plugin(mongoose.enhance.plugins.derived, [
+		mongoose.enhance.plugins.derived(userSchema, [
 			{
 				method: 'count',
 				localField: 'itemsCount',
@@ -529,20 +570,21 @@ describe('derived', () => {
 			},
 		]);
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+			createdAt?: Date;
+			ignore?: boolean;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			createdAt: Date,
 			ignore: Boolean,
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		const user = await new User({
 			name: 'User Name',

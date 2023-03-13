@@ -1,20 +1,6 @@
-const testMemoryServer = require('../__tests_utils__/testMemoryServer');
-const helpers = require('../../helpers');
-
-jest.setTimeout(30000);
-
-let mongoose;
+import helpers from '../helpers';
 
 describe('formatURL', () => {
-	beforeEach(async () => {
-		jest.resetModules();
-		mongoose = await testMemoryServer.createMongoose();
-	});
-
-	afterEach(async () => {
-		await mongoose.disconnect();
-	});
-
 	it('should not encode asset URL', () => {
 		const domainUrl = 'https://madebysix.com/project/kinfolk';
 		const assetUrl =

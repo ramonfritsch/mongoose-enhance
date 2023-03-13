@@ -1,1 +1,6 @@
-- [ ] Add validation code here
+-   clear out TODO: comments
+-   update all schemas with new call signature and types (createSchema, model<..)
+-   update usages of onceSchemasAreReady on application code
+-   update usages of ondeModelsAreReady on application code
+-   update usages of ensureModel (no callback anymore, rename to ensureEntry)
+-   Use mongoose-tsgen with --no-mongoose to generate typescript definitions out of application schemas

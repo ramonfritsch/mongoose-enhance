@@ -1,8 +1,9 @@
-const testMemoryServer = require('../__tests_utils__/testMemoryServer');
+import { EnhancedModel, ExtractEntryType, ObjectId } from '..';
+import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
 
-let mongoose;
+let mongoose: Awaited<ReturnType<typeof testMemoryServer.createMongoose>>;
 
 describe('relationship', () => {
 	beforeEach(async () => {
@@ -15,24 +16,27 @@ describe('relationship', () => {
 	});
 
 	it('should delete using hasMany', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 		});
 
 		userSchema.hasMany('Item', 'user');
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		const user = await new User({
 			name: 'Name',
@@ -58,25 +62,29 @@ describe('relationship', () => {
 	});
 
 	it('should delete using manyToOne', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			company?: ObjectId | ExtractEntryType<CompanyModel>;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
 		});
 
 		userSchema.manyToOne('Company', 'company');
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const companySchema = new mongoose.EnhancedSchema({
+		type CompanyModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const companySchema = mongoose.createSchema<CompanyModel>('Company', {
 			name: String,
 		});
 
-		mongoose.model('Company', companySchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Company = mongoose.model('Company');
+		const Company = mongoose.model(companySchema);
 
 		const company = await new Company({
 			name: 'Company',
@@ -120,7 +128,12 @@ describe('relationship', () => {
 	});
 
 	it('should sync relationships', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			company?: ObjectId | ExtractEntryType<CompanyModel>;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
 		});
@@ -128,25 +141,27 @@ describe('relationship', () => {
 		userSchema.manyToOne('Company', 'company');
 		userSchema.hasMany('Item', 'user');
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const companySchema = new mongoose.EnhancedSchema({
+		type CompanyModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const companySchema = mongoose.createSchema<CompanyModel>('Company', {
 			name: String,
 		});
 
-		mongoose.model('Company', companySchema);
+		const Company = mongoose.model(companySchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<typeof User>;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Company = mongoose.model('Company');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		const company = await new Company({
 			name: 'Company',
@@ -161,9 +176,7 @@ describe('relationship', () => {
 			user: user._id,
 		}).save();
 
-		const db = mongoose.connection.client.db();
-
-		await db.collection('companies').insertMany([
+		await Company.collection.insertMany([
 			{
 				name: 'Company 2',
 			},
@@ -175,7 +188,7 @@ describe('relationship', () => {
 		const missingUserID1 = new mongoose.Types.ObjectId();
 		const missingUserID2 = new mongoose.Types.ObjectId();
 
-		await db.collection('items').insertMany([
+		await Item.collection.insertMany([
 			{
 				user: user._id,
 			},

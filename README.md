@@ -1,8 +1,24 @@
 # `mongoose-enhance`
 
-Bunch of plugins and helpers to enhance mongoose and build better models and relationships. Use at your own risk.
+Bunch of plugins and helpers to enhance mongoose and build better models and relationships. Now with TypeScript support.
 
-Tested and currently in prod on https://savee.it/
+Use at your own risk.
+
+Currently in prod on https://savee.it/
+
+## Migrate 2.x.x -> 3.x.x
+
+### `mongoose.createSchema`
+
+Schemas are now created using the `mongoose.createSchema` method.
+
+### `onceSchemasAreReady`
+
+`onceSchemasAreReady` are not supported anymore.
+
+### `onceModelsAreReady`
+
+`onceModelsAreReady` are not supported anymore. You should run your code after models are created manually.
 
 ## Migrate 1.x.x -> 2.x.x
 
@@ -10,5 +26,5 @@ Tested and currently in prod on https://savee.it/
 
 When `method: 'count'` or `method: 'sum'`:
 
-- Option `model` is renamed to `foreignModelName`
-- Option `localKey` is renamed to `localField`
+-   Option `model` is renamed to `foreignModelName`
+-   Option `localKey` is renamed to `localField`

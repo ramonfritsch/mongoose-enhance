@@ -1,8 +1,9 @@
-const testMemoryServer = require('../__tests_utils__/testMemoryServer');
+import { EnhancedModel } from '..';
+import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
 
-let mongoose;
+let mongoose: Awaited<ReturnType<typeof testMemoryServer.createMongoose>>;
 
 describe('when', () => {
 	beforeEach(async () => {
@@ -17,7 +18,11 @@ describe('when', () => {
 	it('should not let insert duplicated values', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: { type: String, unique: true },
 		});
 
@@ -25,11 +30,7 @@ describe('when', () => {
 			fn(error);
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		await new User({
 			name: 'User Name',

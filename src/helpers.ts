@@ -1,19 +1,28 @@
-const _ = require('lodash');
-const pLimit = require('p-limit');
-const validator = require('validator');
-const normalizeURL = require('normalize-url');
-const url = require('url');
-const path = require('path');
+import _ from 'lodash';
+import normalizeURL from 'normalize-url';
+import pLimit from 'p-limit';
+import path from 'path';
+import url from 'url';
+import validator from 'validator';
+import { Document, ObjectId, QueryCursor } from '.';
 
 const helpers = {
-	id: (entry) => (entry && typeof entry == 'object' && entry._id ? entry._id : entry),
-	equals: (id1, id2) => String(helpers.id(id1)) == String(helpers.id(id2)),
-	ciQuery: (value, loose) =>
+	isDocument: <TEntry = Document>(entry: TEntry | ObjectId): entry is TEntry => {
+		return entry instanceof Document;
+	},
+	id: (entry: Document | ObjectId) => (helpers.isDocument(entry) ? entry._id : entry),
+	equals: (id1: Document | ObjectId, id2: Document | ObjectId) =>
+		String(helpers.id(id1)) == String(helpers.id(id2)),
+	ciQuery: (value: string, loose?: boolean) =>
 		new RegExp(
 			(loose ? '' : '^') + _.escapeRegExp((value || '').toLowerCase()) + (loose ? '' : '$'),
 			'i',
 		),
-	cursorEachAsyncLimit: async (concurrentLimit, cursor, eachCallback) => {
+	cursorEachAsyncLimit: async <TDocument = Document>(
+		concurrentLimit: number,
+		cursor: QueryCursor<TDocument>,
+		eachCallback: (entry: TDocument) => Promise<any>,
+	) => {
 		const limit = pLimit(concurrentLimit);
 
 		await cursor.eachAsync((entry) => {
@@ -25,21 +34,24 @@ const helpers = {
 		}
 	},
 	validation: {
-		isEmail (email) {
+		isEmail(email: string | null | undefined): boolean {
 			if (!email) {
 				return false;
 			}
 
 			return validator.isEmail(email);
 		},
-		formatEmail (email) {
+		formatEmail(email: string | null | undefined) {
 			if (!email) {
 				return null;
 			}
 
 			return String(email).toLowerCase();
 		},
-		isUsername (username, type) {
+		isUsername(
+			username: string | null | undefined,
+			type: 'instagram' | 'twitter' | undefined = undefined,
+		) {
 			//Instagram: 30, Twitter: 15, Tumblr: 32, Facebook: 50
 
 			if (!username) {
@@ -54,21 +66,28 @@ const helpers = {
 
 			return false;
 		},
-		formatUsername (username /*, type*/) {
+		formatUsername(username: string | null | undefined) {
 			if (!username) {
 				return null;
 			}
 
 			return String(String(username).split('@').join('').split(' ')[0]).toLowerCase();
 		},
-		formatURL (baseURL, pathname) {
+		formatURL(baseURLOrPathname: string, pathnameOrEmpty?: string): string {
+			let baseURL: string | undefined = baseURLOrPathname;
+			let pathname: string | undefined = pathnameOrEmpty;
+
 			if (arguments.length === 1) {
 				pathname = baseURL;
-				baseURL = null;
+				baseURL = undefined;
+			}
+
+			if (!pathname) {
+				return '';
 			}
 
 			//Do not format base64 img urls
-			if (pathname.indexOf(';base64,') !== -1) {
+			if (pathname?.indexOf(';base64,') !== -1) {
 				return pathname;
 			}
 
@@ -80,7 +99,10 @@ const helpers = {
 						const pathnameParsed = url.parse(pathname);
 
 						parsed.protocol = parsed.protocol || 'http';
-						parsed.pathname = path.join(parsed.pathname, pathnameParsed.pathname);
+						parsed.pathname = path.join(
+							parsed.pathname || '',
+							pathnameParsed.pathname || '',
+						);
 						parsed.search = pathnameParsed.search;
 						parsed.hash = pathnameParsed.hash;
 
@@ -95,13 +117,13 @@ const helpers = {
 				normalized = normalizeURL(pathname, {
 					removeTrailingSlash: false,
 					sortQueryParameters: false,
-					stripHash: false
+					stripHash: false,
 				});
 			} catch (e) {}
 
 			return normalized;
 		},
-		isURL (url) {
+		isURL(url: string): boolean {
 			return validator.isURL(url, {
 				protocols: ['http', 'https'],
 				allow_underscores: true,
@@ -110,4 +132,4 @@ const helpers = {
 	},
 };
 
-module.exports = helpers;
+export default helpers;

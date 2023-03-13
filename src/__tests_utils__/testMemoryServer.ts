@@ -1,13 +1,11 @@
-const { MongoMemoryServer } = require('mongodb-memory-server');
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
 const testMemoryServer = {
 	async createMongoose() {
-		const mongoose = require('../../index');
+		const { default: mongoose } = await import('../index');
 
 		const mongoMemoryServerInstance = await MongoMemoryServer.create();
 		const mongoMemoryServerURI = mongoMemoryServerInstance.getUri();
-
-		mongoose._mongoMemoryServerInstance = mongoMemoryServerInstance;
 
 		await mongoose.connect(mongoMemoryServerURI, {
 			useNewUrlParser: true,
@@ -26,4 +24,4 @@ const testMemoryServer = {
 	},
 };
 
-module.exports = testMemoryServer;
+export default testMemoryServer;

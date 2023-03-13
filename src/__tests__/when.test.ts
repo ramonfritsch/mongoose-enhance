@@ -1,4 +1,5 @@
-const testMemoryServer = require('../__tests_utils__/testMemoryServer');
+import { EnhancedModel, ExtractEntryType, ObjectId } from '..';
+import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
 
@@ -10,7 +11,7 @@ function expectSequence(fn, count, mod = count) {
 	expect(fn).toBeCalledTimes(count);
 }
 
-let mongoose;
+let mongoose: Awaited<ReturnType<typeof testMemoryServer.createMongoose>>;
 
 describe('when', () => {
 	beforeEach(async () => {
@@ -25,7 +26,11 @@ describe('when', () => {
 	it('should call whenNew callbacks', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 		});
 
@@ -42,7 +47,7 @@ describe('when', () => {
 		});
 		userSchema.whenPostNew(function () {
 			fn(11);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(12);
 					resolve();
@@ -52,7 +57,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenPostNew(function (next) {
 			fn(13);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(14);
 					resolve();
@@ -72,7 +77,7 @@ describe('when', () => {
 		});
 		userSchema.whenNew(function () {
 			fn(4);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(5);
 					resolve();
@@ -82,7 +87,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenNew(function (next) {
 			fn(6);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(7);
 					resolve();
@@ -90,11 +95,7 @@ describe('when', () => {
 			);
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		const user = await new User({
 			name: 'User Name',
@@ -113,7 +114,11 @@ describe('when', () => {
 	it('should call whenSave callbacks', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 		});
 
@@ -130,7 +135,7 @@ describe('when', () => {
 		});
 		userSchema.whenPostSave(function () {
 			fn(11);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(12);
 					resolve();
@@ -140,7 +145,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenPostSave(function (next) {
 			fn(13);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(14);
 					resolve();
@@ -160,7 +165,7 @@ describe('when', () => {
 		});
 		userSchema.whenSave(function () {
 			fn(4);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(5);
 					resolve();
@@ -170,7 +175,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenSave(function (next) {
 			fn(6);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(7);
 					resolve();
@@ -178,11 +183,7 @@ describe('when', () => {
 			);
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		const user = await new User({
 			name: 'User Name',
@@ -204,7 +205,15 @@ describe('when', () => {
 		const fn = jest.fn();
 		const fn2 = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+			nested?: Partial<{
+				field: string;
+			}>;
+			parent?: ObjectId | ExtractEntryType<UserModel>;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			nested: {
 				field: String,
@@ -225,7 +234,7 @@ describe('when', () => {
 		});
 		userSchema.whenPostModified('name', function () {
 			fn(11);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(12);
 					resolve();
@@ -235,7 +244,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenPostModified('name', function (next) {
 			fn(13);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(14);
 					resolve();
@@ -256,7 +265,7 @@ describe('when', () => {
 		});
 		userSchema.whenModified('name', function () {
 			fn(4);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(5);
 					resolve();
@@ -266,7 +275,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenModified('name', function (next) {
 			fn(6);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(7);
 					resolve();
@@ -282,11 +291,7 @@ describe('when', () => {
 			fn(16);
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		const user = await new User({
 			name: 'Name 1',
@@ -334,7 +339,7 @@ describe('when', () => {
 
 		expect(fn).toBeCalledTimes(30);
 
-		user2 = await User.findById(user2._id);
+		user2 = (await User.findById(user2._id))!;
 
 		user2.parent = user3;
 		await user2.save();
@@ -355,7 +360,11 @@ describe('when', () => {
 		const fn = jest.fn();
 		const fn2 = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 		});
 
@@ -372,7 +381,7 @@ describe('when', () => {
 		});
 		userSchema.whenPostModifiedOrNew('name', function () {
 			fn(11);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(12);
 					resolve();
@@ -382,7 +391,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenPostModifiedOrNew('name', function (next) {
 			fn(13);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(14);
 					resolve();
@@ -403,7 +412,7 @@ describe('when', () => {
 		});
 		userSchema.whenModifiedOrNew('name', function () {
 			fn(4);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(5);
 					resolve();
@@ -413,7 +422,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenModifiedOrNew('name', function (next) {
 			fn(6);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(7);
 					resolve();
@@ -421,11 +430,7 @@ describe('when', () => {
 			);
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		const user = await new User({
 			name: 'Name 1',
@@ -459,7 +464,11 @@ describe('when', () => {
 	it('should call whenRemoved callback', async () => {
 		const fn = jest.fn();
 
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 		});
 
@@ -477,7 +486,7 @@ describe('when', () => {
 		});
 		userSchema.whenPostRemoved(function () {
 			fn(11);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(12);
 					resolve();
@@ -487,7 +496,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenPostRemoved(function (next) {
 			fn(13);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(14);
 					resolve();
@@ -507,7 +516,7 @@ describe('when', () => {
 		});
 		userSchema.whenRemoved(function () {
 			fn(4);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(5);
 					resolve();
@@ -517,7 +526,7 @@ describe('when', () => {
 		// eslint-disable-next-line no-unused-vars
 		userSchema.whenRemoved(function (next) {
 			fn(6);
-			return new Promise((resolve) =>
+			return new Promise<void>((resolve) =>
 				setTimeout(() => {
 					fn(7);
 					resolve();
@@ -525,18 +534,17 @@ describe('when', () => {
 			);
 		});
 
-		mongoose.model('User', userSchema);
+		const User = mongoose.model(userSchema);
 
-		const itemSchema = new mongoose.EnhancedSchema({
+		type ItemModel = EnhancedModel<{
+			user?: ObjectId | ExtractEntryType<UserModel>;
+		}>;
+
+		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 		});
 
-		mongoose.model('Item', itemSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
-		const Item = mongoose.model('Item');
+		const Item = mongoose.model(itemSchema);
 
 		let user = await new User({
 			name: 'Name 1',
@@ -574,9 +582,16 @@ describe('when', () => {
 	});
 
 	it('should save documents properly inside post callbacks', async () => {
-		const fn = jest.fn();
+		type UserModel = EnhancedModel<{
+			name?: string;
+			derivedName?: string;
+			derivedName2?: string;
+			willChange?: string;
+			derivedWillChange?: string;
+			derivedWillChange2?: string;
+		}>;
 
-		const userSchema = new mongoose.EnhancedSchema({
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 			derivedName: String,
 			derivedName2: String,
@@ -609,11 +624,7 @@ describe('when', () => {
 			return this.save();
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		const newUser = await new User({}).save();
 

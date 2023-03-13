@@ -1,8 +1,10 @@
-const testMemoryServer = require('../__tests_utils__/testMemoryServer');
+import { EnhancedModel, ExtractEntryType } from '..';
+import testMemoryServer from '../__tests_utils__/testMemoryServer';
+import { Result } from '../pluginPaginate';
 
 jest.setTimeout(30000);
 
-let mongoose;
+let mongoose: Awaited<ReturnType<typeof testMemoryServer.createMongoose>>;
 
 describe('paginate', () => {
 	beforeEach(async () => {
@@ -15,15 +17,15 @@ describe('paginate', () => {
 	});
 
 	it('should paginate', async () => {
-		const userSchema = new mongoose.EnhancedSchema({
+		type UserModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
 			name: String,
 		});
 
-		mongoose.model('User', userSchema);
-
-		mongoose.createModels();
-
-		const User = mongoose.model('User');
+		const User = mongoose.model(userSchema);
 
 		for (let i = 0; i < 100; i++) {
 			await new User({
@@ -31,7 +33,7 @@ describe('paginate', () => {
 			}).save();
 		}
 
-		let result = await new Promise((resolve, reject) => {
+		let result: Result<ExtractEntryType<typeof User>> = await new Promise((resolve, reject) => {
 			User.paginate({ pageSize: 10 }).exec((err, data) =>
 				err ? reject(err) : resolve(data),
 			);
