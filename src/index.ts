@@ -93,6 +93,10 @@ function isString(value: any): value is string {
 	return typeof value === 'string';
 }
 
+Object.entries(extraTypes.ExtraSchemaTypes).forEach(([name, type]) => {
+	mongooseOriginal.Schema.Types[name] = type;
+});
+
 const mongooseEnhanced: {
 	Schema: typeof Schema;
 	SchemaTypes: typeof mongooseOriginal.SchemaTypes & typeof extraTypes.ExtraSchemaTypes;

@@ -64,7 +64,7 @@ const helpers = {
 				return /^[a-zA-Z0-9_]{1,15}$/.test(username);
 			}
 
-			return false;
+			return /^[a-zA-Z0-9_]{1,50}$/.test(username);
 		},
 		formatUsername(username: string | null | undefined) {
 			if (!username) {

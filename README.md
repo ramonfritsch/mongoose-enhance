@@ -24,6 +24,10 @@ Schemas are now created using the `mongoose.createSchema` method.
 
 `ensureModel` is now renamed to `ensureEntry`.
 
+### Extra types
+
+Extra types are now on `mongoose.SchemaTypes`.
+
 ## Migrate 1.x.x -> 2.x.x
 
 ### `mongoose.enhance.plugins.derived`
