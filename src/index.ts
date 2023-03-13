@@ -1,9 +1,7 @@
 import mongooseOriginal, {
-	Document,
 	EnforceDocument,
 	LeanDocument,
 	Model,
-	ObjectId,
 	Schema,
 	SchemaDefinition,
 	SchemaOptions,
@@ -32,6 +30,9 @@ if (global.Promise) {
 
 export * from 'mongoose';
 
+require('mongoose-strip-html-tags')(mongooseOriginal);
+require('mongoose-shortid-nodeps');
+
 type ExtraSchema<TModel extends EnhancedModel> = {
 	modelName: string;
 } & PluginRelationshipSchema &
@@ -46,34 +47,28 @@ export type ExtractEntryType<TModel extends EnhancedModel> = TModel extends Enha
 >
 	? EnhancedEntry<TFields, TMethods>
 	: never;
-type ExtractFieldsType<TModel extends EnhancedModel> = TModel extends EnhancedModel<infer TFields>
-	? TFields
-	: never;
 
-// EnforceDocument<TFields, TMethods>,
+type ExtractPartialEntryType<TModel extends EnhancedModel> = TModel extends EnhancedModel<
+	infer TFields,
+	infer TMethods
+>
+	? EnhancedEntry<Partial<TFields>, TMethods>
+	: never;
 
 export type EnhancedEntry<TFields = any, TMethods = any, TQueryHelpers = {}> = EnforceDocument<
 	TFields,
 	ExtraMethods & TMethods
 >;
 
-// export type EnhancedEntry<TFields = any, TMethods = any, TQueryHelpers = {}> = Document<
-// 	ObjectId,
-// 	TQueryHelpers,
-// 	TFields
-// > &
-// 	ExtraMethods &
-// 	TMethods;
-
 export type EnhancedModel<TFields = {}, TMethods = {}, TStatics = {}, TQueryHelpers = {}> = Model<
-	TFields,
+	Partial<TFields>,
 	TQueryHelpers,
 	ExtraMethods & TMethods
 > &
-	ExtraStatics<EnhancedEntry<TFields, TMethods, TQueryHelpers>> &
+	ExtraStatics<EnhancedEntry<Partial<TFields>, TMethods, TQueryHelpers>> &
 	TStatics;
 export type EnhancedSchema<TModel extends EnhancedModel> = Schema<
-	Document<ObjectId, undefined, ExtractFieldsType<TModel>>,
+	ExtractPartialEntryType<TModel>,
 	TModel,
 	undefined,
 	ExtraMethods
@@ -84,6 +79,7 @@ type PreCompileCallback<TModel extends EnhancedModel = EnhancedModel> = (
 	schema: EnhancedSchema<TModel>,
 ) => void;
 
+const compiledModelNames: string[] = [];
 const preCompileCallbacks: Map<string, Array<PreCompileCallback>> = new Map();
 
 // External plugins
@@ -93,20 +89,45 @@ function isString(value: any): value is string {
 	return typeof value === 'string';
 }
 
-Object.entries(extraTypes.ExtraSchemaTypes).forEach(([name, type]) => {
-	mongooseOriginal.Schema.Types[name] = type;
-});
+function isEnhancedSchema(value: any): value is EnhancedSchema<any> {
+	return isString(value.modelName);
+}
 
-const mongooseEnhanced: {
-	Schema: typeof Schema;
+const originalModel = mongooseOriginal.model;
+const createModel = <TModel extends EnhancedModel>(
+	name: string,
+	schema: EnhancedSchema<TModel> | Schema,
+): TModel => {
+	// Run callbacks if schema is enhanced
+	if (isEnhancedSchema(schema)) {
+		if (name !== schema.modelName) {
+			throw new Error('EnhancedSchema has a different `.modelName` than the model name');
+		}
+
+		const callbacks = preCompileCallbacks.get(name) || [];
+
+		callbacks.forEach((callback) => callback(schema));
+
+		if (compiledModelNames.includes(name)) {
+			throw new Error(
+				`Trying to compile the same model twice (${name}). This usually happens when you use the derived plugin, create the models with the derived plugin before their foreign dependency.`,
+			);
+		}
+
+		compiledModelNames[name] = true;
+	}
+
+	return originalModel(name, schema as any) as any;
+};
+
+type MongooseEnhanced = Omit<typeof mongooseOriginal, 'model'> & {
+	original: typeof mongooseOriginal;
 	SchemaTypes: typeof mongooseOriginal.SchemaTypes & typeof extraTypes.ExtraSchemaTypes;
 	Types: typeof mongooseOriginal.Types & typeof extraTypes.ExtraTypes;
-	connection: typeof mongooseOriginal.connection;
-	connect: typeof mongooseOriginal.connect;
-	disconnect: typeof mongooseOriginal.disconnect;
-	models: typeof mongooseOriginal.models;
-	mongo: typeof mongooseOriginal.mongo;
-	model<TModel extends EnhancedModel>(nameOrSchema: string | EnhancedSchema<TModel>): TModel;
+	model<TModel extends EnhancedModel>(
+		nameOrSchema: string | EnhancedSchema<TModel>,
+		schema?: EnhancedSchema<TModel> | Schema,
+	): TModel;
 	enhance: {
 		plugins: Record<string, typeof externalPluginDerived>;
 		_oncePreCompile<TModel extends EnhancedModel>(
@@ -123,77 +144,93 @@ const mongooseEnhanced: {
 		definition: SchemaDefinition<LeanDocument<TSchemaDefinitionType>>,
 		options?: SchemaOptions,
 	): EnhancedSchema<TModel>;
-} & typeof helpers = {
-	Schema,
-	SchemaTypes: { ...mongooseOriginal.SchemaTypes, ...extraTypes.ExtraSchemaTypes },
-	Types: { ...mongooseOriginal.Types, ...extraTypes.ExtraTypes },
-	connection: mongooseOriginal.connection,
-	connect: mongooseOriginal.connect.bind(mongooseOriginal),
-	disconnect: mongooseOriginal.disconnect.bind(mongooseOriginal),
-	models: mongooseOriginal.models,
-	mongo: mongooseOriginal.mongo,
-	model<TModel extends EnhancedModel>(nameOrSchema: string | EnhancedSchema<TModel>) {
-		if (isString(nameOrSchema)) {
-			return mongooseOriginal.model(nameOrSchema) as any;
-		} else {
-			const schema = nameOrSchema;
-			const modelName = schema.modelName;
+} & typeof helpers;
 
-			const callbacks = preCompileCallbacks.get(modelName) || [];
+const mongooseEnhanced = mongooseOriginal as MongooseEnhanced;
 
-			callbacks.forEach((callback) => callback(schema));
+mongooseEnhanced.original = mongooseOriginal;
 
-			return mongooseOriginal.model(modelName, schema as any);
+Object.entries(extraTypes.ExtraSchemaTypes).forEach(([name, type]) => {
+	mongooseEnhanced.SchemaTypes[name] = type;
+	mongooseEnhanced.Schema.Types[name] = type;
+});
+
+Object.entries(extraTypes.ExtraTypes).forEach(([name, type]) => {
+	mongooseEnhanced.Types[name] = type;
+});
+
+Object.entries(helpers).forEach(([name, fn]) => {
+	mongooseEnhanced[name] = fn;
+});
+
+mongooseEnhanced.model = <TModel extends EnhancedModel>(
+	nameOrSchema: string | EnhancedSchema<TModel>,
+	schema?: EnhancedSchema<TModel> | Schema,
+) => {
+	if (isString(nameOrSchema)) {
+		if (schema) {
+			return createModel(nameOrSchema, schema);
 		}
+
+		return originalModel(nameOrSchema) as any;
+	} else if (isEnhancedSchema(nameOrSchema)) {
+		return createModel(nameOrSchema.modelName, nameOrSchema);
+	} else {
+		throw new Error('Invalid arguments on mongoose.model');
+	}
+};
+
+mongooseEnhanced.enhance = {
+	plugins: {
+		derived: externalPluginDerived,
 	},
-	enhance: {
-		plugins: {
-			derived: externalPluginDerived,
-		},
-		_oncePreCompile(name, callback) {
-			const callbacks = preCompileCallbacks.get(name) || [];
+	_oncePreCompile(name, callback) {
+		if (compiledModelNames.includes(name)) {
+			throw new Error(
+				`Trying to register a pre compile hook when model ${name} is already compiled.`,
+			);
+		}
 
-			callbacks.push(callback);
+		const callbacks = preCompileCallbacks.get(name) || [];
 
-			preCompileCallbacks.set(name, callbacks);
-		},
-		// TODO: Remove onceSchemasAreReady from plugins
-		// TODO: Do onceModelsAreReady on application code instead
-		async sync() {
-			await syncRelationships();
-			await this.enhance.syncDerived();
-		},
-		syncRelationships,
-		syncDerived,
+		callbacks.push(callback);
+
+		preCompileCallbacks.set(name, callbacks);
 	},
-	createSchema<TModel extends EnhancedModel, TSchemaDefinitionType = undefined>(
-		name: string,
-		definition: SchemaDefinition<LeanDocument<TSchemaDefinitionType>>,
-		options?: SchemaOptions,
-	) {
-		const schema = new Schema<
-			Document<ObjectId, undefined, ExtractFieldsType<TModel>>,
-			TModel,
-			undefined,
-			ExtraMethods
-		>(definition, options);
-
-		const enhancedSchema = schema as EnhancedSchema<TModel>;
-
-		enhancedSchema.modelName = name;
-
-		pluginEnsureEntry<TModel>(enhancedSchema);
-		pluginOld<TModel>(enhancedSchema);
-		pluginRestore<TModel>(enhancedSchema);
-		pluginWasModified<TModel>(enhancedSchema);
-		pluginRelationship<TModel>(enhancedSchema);
-		pluginWhen<TModel>(enhancedSchema);
-		pluginValidators<TModel>(enhancedSchema);
-		pluginPaginate<TModel>(enhancedSchema);
-
-		return enhancedSchema;
+	async sync() {
+		await syncRelationships();
+		await this.enhance.syncDerived();
 	},
-	...helpers,
+	syncRelationships,
+	syncDerived,
+};
+
+mongooseEnhanced.createSchema = <TModel extends EnhancedModel, TSchemaDefinitionType = undefined>(
+	name: string,
+	definition: SchemaDefinition<LeanDocument<TSchemaDefinitionType>>,
+	options?: SchemaOptions,
+) => {
+	const schema = new Schema<
+		ExtractPartialEntryType<TModel>,
+		TModel,
+		TSchemaDefinitionType,
+		ExtraMethods
+	>(definition, options);
+
+	const enhancedSchema = schema as EnhancedSchema<TModel>;
+
+	enhancedSchema.modelName = name;
+
+	pluginEnsureEntry(enhancedSchema);
+	pluginOld(enhancedSchema);
+	pluginRestore(enhancedSchema);
+	pluginWasModified(enhancedSchema);
+	pluginRelationship(enhancedSchema);
+	pluginWhen(enhancedSchema);
+	pluginValidators(enhancedSchema);
+	pluginPaginate(enhancedSchema);
+
+	return enhancedSchema;
 };
 
 export default mongooseEnhanced;

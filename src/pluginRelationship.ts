@@ -107,7 +107,6 @@ export default function pluginRelationship<TModel extends EnhancedModel>(
 				mongoose.model(schema.modelName),
 				mongoose.model(foreignModelName),
 				localKey,
-				// @ts-ignore
 				mongoose.id(this.getOld(localKey)),
 			);
 		});

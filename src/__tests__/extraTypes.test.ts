@@ -21,16 +21,22 @@ describe('extraTypes', () => {
 			email?: string;
 			username?: string;
 			url?: string;
+			shortID?: string;
 		}>;
 
-		const userSchema = mongoose.createSchema<UserModel>('User', {
-			// @ts-ignore
-			email: mongoose.SchemaTypes.Email,
-			// @ts-ignore
-			username: mongoose.SchemaTypes.Username,
-			// @ts-ignore
-			url: mongoose.SchemaTypes.URL,
-		});
+		const userSchema = mongoose.createSchema<UserModel>(
+			'User',
+			{
+				email: mongoose.SchemaTypes.Email,
+				username: mongoose.SchemaTypes.Username,
+				url: mongoose.SchemaTypes.URL,
+				// @ts-ignore
+				shortID: mongoose.Schema.Types.ShortId,
+			},
+			{
+				timestamps: true,
+			},
+		);
 
 		const User = mongoose.model(userSchema);
 
@@ -41,7 +47,45 @@ describe('extraTypes', () => {
 		});
 
 		await user.save();
+
+		expect(user.shortID!.length).toBeGreaterThan(0);
 	});
 
-	// TODO: Test when model is in place to see if mongoose saves it correctly, we can improve the API from ensureEntry to doc.populate()...
+	it('should support nested schemas', async () => {
+		type UserMegaphoneModel = EnhancedModel<{
+			name?: string;
+		}>;
+
+		const userMegaphoneSchema = mongoose.createSchema<UserMegaphoneModel>(
+			'UserMegaphone',
+			{
+				name: String,
+			},
+			{
+				timestamps: true,
+			},
+		);
+
+		type UserModel = EnhancedModel<{
+			megaphones?: Array<UserMegaphoneModel>;
+		}>;
+
+		const userSchema = mongoose.createSchema<UserModel>('User', {
+			megaphones: [userMegaphoneSchema],
+		});
+
+		const User = mongoose.model(userSchema);
+
+		const user = await new User({
+			megaphones: [
+				{
+					name: 'Test 1',
+				},
+			],
+		});
+
+		await user.save();
+
+		expect(user.megaphones![0].name).toBe('Test 1');
+	});
 });
