@@ -20,6 +20,10 @@ Schemas are now created using the `mongoose.createSchema` method.
 
 `onceModelsAreReady` are not supported anymore. You should run your code after models are created manually.
 
+### `ensureModel`
+
+`ensureModel` is now renamed to `ensureEntry`.
+
 ## Migrate 1.x.x -> 2.x.x
 
 ### `mongoose.enhance.plugins.derived`

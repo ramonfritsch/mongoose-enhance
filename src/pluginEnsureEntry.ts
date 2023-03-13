@@ -16,7 +16,7 @@ export default function pluginEnsureEntry<TModel extends EnhancedModel>(
 	schema.statics.ensureEntry = function (
 		entryOrID: ExtractEntryType<TModel> | ObjectId,
 	): Promise<ExtractEntryType<TModel>> {
-		if (mongoose.isDocument(entryOrID)) {
+		if (mongoose.isEntry(entryOrID)) {
 			return Promise.resolve(entryOrID);
 		}
 
