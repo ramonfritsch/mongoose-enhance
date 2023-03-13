@@ -100,6 +100,8 @@ const mongooseEnhanced: {
 	connection: typeof mongooseOriginal.connection;
 	connect: typeof mongooseOriginal.connect;
 	disconnect: typeof mongooseOriginal.disconnect;
+	models: typeof mongooseOriginal.models;
+	mongo: typeof mongooseOriginal.mongo;
 	model<TModel extends EnhancedModel>(nameOrSchema: string | EnhancedSchema<TModel>): TModel;
 	enhance: {
 		plugins: Record<string, typeof externalPluginDerived>;
@@ -124,6 +126,8 @@ const mongooseEnhanced: {
 	connection: mongooseOriginal.connection,
 	connect: mongooseOriginal.connect.bind(mongooseOriginal),
 	disconnect: mongooseOriginal.disconnect.bind(mongooseOriginal),
+	models: mongooseOriginal.models,
+	mongo: mongooseOriginal.mongo,
 	model<TModel extends EnhancedModel>(nameOrSchema: string | EnhancedSchema<TModel>) {
 		if (isString(nameOrSchema)) {
 			return mongooseOriginal.model(nameOrSchema) as any;
