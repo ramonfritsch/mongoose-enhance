@@ -6,40 +6,28 @@ export type Methods = {
 	clearWasModified: (path?: string) => void;
 };
 
-export default function pluginWasModified<TModel extends EnhancedModel>(
+export default function pluginWasModified<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
 ) {
-	schema.methods.setWasModified = function (path) {
+	schema.methods.setWasModified = function (path: string | undefined = undefined) {
 		if (!this.$locals.wasModified) {
 			this.$locals.wasModified = {};
 		}
 
 		if (this.$locals.wasModified) {
-			if (!path) {
-				this.$locals.wasModified['$$doc'] = this.isModified();
-
-				return;
-			}
-
-			this.$locals.wasModified[path] = this.isModified(path);
+			this.$locals.wasModified[!path ? '$$doc' : path] = !path
+				? this.isModified()
+				: this.isModified(path);
 		}
 	};
 
-	schema.methods.wasModified = function (path) {
-		if (!path) {
-			return this.$locals.wasModified?.['$$doc'];
-		}
-
-		return this.$locals.wasModified ? this.$locals.wasModified[path] : false;
+	schema.methods.wasModified = function (path: string | undefined = undefined) {
+		return this.$locals.wasModified ? this.$locals.wasModified[!path ? '$$doc' : path] : false;
 	};
 
-	schema.methods.clearWasModified = function (path) {
+	schema.methods.clearWasModified = function (path: string | undefined = undefined) {
 		if (this.$locals.wasModified) {
-			if (!path) {
-				delete this.$locals.wasModified['$$doc'];
-			}
-
-			delete this.$locals.wasModified[path];
+			delete this.$locals.wasModified[!path ? '$$doc' : path];
 		}
 	};
 }

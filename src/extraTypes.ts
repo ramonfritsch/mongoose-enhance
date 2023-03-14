@@ -1,55 +1,107 @@
-import util from 'util';
-
-import { SchemaTypes } from 'mongoose';
+import { Schema } from 'mongoose';
 import mongoose from './index';
 
-const ExtraSchemaTypes: any = {};
-const ExtraTypes: any = {};
-
 //Email
-function Email(/*path, options*/) {
-	SchemaTypes.String.apply(this, arguments);
+class Email extends Schema.Types.String {
+	constructor(path: string, options?: any, instance?: string) {
+		super(path, options, instance);
 
-	this.validate(mongoose.validation.isEmail, '{LABEL} is invalid.');
+		this.validate(mongoose.validation.isEmail, '{LABEL} is invalid.');
+	}
+
+	cast(value: any) {
+		if (typeof value === 'string') {
+			return mongoose.validation.formatEmail(value);
+		} else {
+			return '';
+		}
+	}
 }
 
-util.inherits(Email, SchemaTypes.String);
+// function Email(/*path, options*/) {
+// 	SchemaTypes.String.apply(this, arguments);
 
-Email.prototype.cast = (value) => mongoose.validation.formatEmail(value);
+// 	this.validate(mongoose.validation.isEmail, '{LABEL} is invalid.');
+// }
 
-ExtraSchemaTypes.Email = Email;
-ExtraTypes.Email = String;
+// util.inherits(Email, SchemaTypes.String);
+
+// Email.prototype.cast = (value) => mongoose.validation.formatEmail(value);
 
 //Username
-function Username(/*path, options*/) {
-	SchemaTypes.String.apply(this, arguments);
+class Username extends Schema.Types.String {
+	constructor(path: string, options?: any, instance?: string) {
+		super(path, options, instance);
 
-	this.validate(
-		(value) => mongoose.validation.isUsername(value),
-		'{LABEL} is invalid. Use only letters, numbers or _ between 3 and 50 characters.',
-	);
+		this.validate((value: any) => {
+			if (typeof value === 'string') {
+				return mongoose.validation.isUsername(value);
+			} else {
+				return false;
+			}
+		}, '{LABEL} is invalid. Use only letters, numbers or _ between 3 and 50 characters.');
+	}
+
+	cast(value: any) {
+		if (typeof value === 'string') {
+			return mongoose.validation.formatUsername(value);
+		} else {
+			return '';
+		}
+	}
 }
 
-util.inherits(Username, SchemaTypes.String);
+// function Username(/*path, options*/) {
+// 	SchemaTypes.String.apply(this, arguments);
 
-Username.prototype.cast = (value) => mongoose.validation.formatUsername(value);
+// 	this.validate(
+// 		(value) => mongoose.validation.isUsername(value),
+// 		'{LABEL} is invalid. Use only letters, numbers or _ between 3 and 50 characters.',
+// 	);
+// }
 
-ExtraSchemaTypes.Username = Username;
-ExtraTypes.Username = String;
+// util.inherits(Username, SchemaTypes.String);
+
+// Username.prototype.cast = (value) => mongoose.validation.formatUsername(value);
 
 //URL
-function URL(/*path, options*/) {
-	SchemaTypes.String.apply(this, arguments);
+class URL extends Schema.Types.String {
+	constructor(path: string, options?: any, instance?: string) {
+		super(path, options, instance);
 
-	this.validate(mongoose.validation.isURL, '{LABEL} is invalid.');
+		this.validate(mongoose.validation.isURL, '{LABEL} is invalid.');
+	}
+
+	cast(value: any) {
+		if (typeof value === 'string') {
+			return mongoose.validation.formatURL(value);
+		} else {
+			return '';
+		}
+	}
 }
 
-util.inherits(URL, SchemaTypes.String);
+// function URL(/*path, options*/) {
+// 	SchemaTypes.String.apply(this, arguments);
 
-URL.prototype.cast = (value) => mongoose.validation.formatURL(value);
+// 	this.validate(mongoose.validation.isURL, '{LABEL} is invalid.');
+// }
 
-ExtraSchemaTypes.URL = URL;
-ExtraTypes.URL = String;
+// util.inherits(URL, SchemaTypes.String);
+
+// URL.prototype.cast = (value) => mongoose.validation.formatURL(value);
+
+const ExtraSchemaTypes = {
+	Email,
+	Username,
+	URL,
+} as const;
+
+const ExtraTypes = {
+	Email: String,
+	Username: String,
+	URL: String,
+} as const;
 
 export default {
 	ExtraSchemaTypes,

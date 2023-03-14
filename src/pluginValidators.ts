@@ -1,9 +1,11 @@
+// @ts-ignore
 import beautifyUnique from 'mongoose-beautiful-unique-validation';
+// @ts-ignore
 import ucfirst from 'ucfirst';
 
 import { EnhancedModel, EnhancedSchema } from '.';
 
-export default function pluginValidators<TModel extends EnhancedModel>(
+export default function pluginValidators<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
 ) {
 	// Convert `unique: true` index error messages into regular validation errors

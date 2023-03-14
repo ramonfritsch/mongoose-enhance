@@ -6,22 +6,22 @@ import mongoose, {
 	ObjectId,
 } from '.';
 
-export type Statics<TEntry extends EnhancedEntry> = {
+export type Statics<TEntry extends EnhancedEntry<any>> = {
 	ensureEntry: (entryOrID: TEntry | ObjectId) => Promise<TEntry>;
 };
 
-export default function pluginEnsureEntry<TModel extends EnhancedModel>(
+export default function pluginEnsureEntry<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
 ) {
 	schema.statics.ensureEntry = function (
 		entryOrID: ExtractEntryType<TModel> | ObjectId,
-	): Promise<ExtractEntryType<TModel>> {
+	): Promise<ExtractEntryType<TModel> | null> {
 		if (mongoose.isEntry(entryOrID)) {
 			return Promise.resolve(entryOrID);
 		}
 
 		return this.findOne({
 			_id: mongoose.id(entryOrID),
-		});
-	} as Statics<ExtractEntryType<TModel>>['ensureEntry'];
+		}).exec();
+	};
 }

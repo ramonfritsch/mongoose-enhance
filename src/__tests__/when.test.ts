@@ -3,7 +3,7 @@ import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
 
-function expectSequence(fn, count, mod = count) {
+function expectSequence(fn: () => any, count: number, mod: number = count) {
 	for (let i = 1; i <= count; i++) {
 		expect(fn).nthCalledWith(i, 1 + ((i - 1) % mod));
 	}

@@ -1,11 +1,11 @@
 import pLimit from 'p-limit';
-import mongoose, { EnhancedModel, EnhancedSchema, ExtractEntryType, ObjectId } from '.';
+import mongoose, { EnhancedEntry, EnhancedModel, EnhancedSchema, ObjectId } from '.';
 
-async function removeIfNotReferenced<TModel extends EnhancedModel = EnhancedModel>(
+async function removeIfNotReferenced(
 	localModel: EnhancedModel<any>,
-	foreignModel: TModel,
+	foreignModel: EnhancedModel<any>,
 	localKey: string,
-	entryOrEntryID: ExtractEntryType<TModel> | ObjectId,
+	entryOrEntryID: EnhancedEntry<any> | ObjectId,
 ) {
 	const count = await localModel.countDocuments({
 		[localKey]: mongoose.id(entryOrEntryID),
@@ -77,10 +77,14 @@ export const syncRelationships = async function () {
 	);
 };
 
-export default function pluginRelationship<TModel extends EnhancedModel>(
+export default function pluginRelationship<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
 ) {
-	schema.hasMany = function (foreignModelName, foreignKey, localKey = '_id') {
+	schema.hasMany = function (
+		foreignModelName: string,
+		foreignKey: string,
+		localKey: string = '_id',
+	) {
 		schema.whenRemoved(async function () {
 			const foreignModel = mongoose.model(foreignModelName);
 			const entries = await foreignModel.find({
@@ -101,7 +105,11 @@ export default function pluginRelationship<TModel extends EnhancedModel>(
 	};
 
 	// Remove if no one else references it
-	schema.manyToOne = function (foreignModelName, localKey, foreignKey = '_id') {
+	schema.manyToOne = function (
+		foreignModelName: string,
+		localKey: string,
+		foreignKey: string = '_id',
+	) {
 		schema.whenPostModified(localKey, function () {
 			return removeIfNotReferenced(
 				mongoose.model(schema.modelName),

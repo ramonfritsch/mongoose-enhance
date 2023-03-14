@@ -1,6 +1,12 @@
-import { Document } from 'mongoose';
 import pLimit from 'p-limit';
-import mongoose, { EnhancedModel, EnhancedSchema } from '.';
+import mongoose, {
+	Document,
+	EnhancedEntry,
+	EnhancedModel,
+	EnhancedSchema,
+	ExtractEntryType,
+	ObjectId,
+} from '.';
 
 // TODO: More strict type here
 
@@ -8,29 +14,35 @@ export type Methods = {
 	syncDerived: () => Promise<void>;
 };
 
-/*type Spec = {
+type Spec<TEntry extends EnhancedEntry<any>> = {
 	defaultValue?: any;
 	localKey?: string;
 	localField: string;
 	foreignKey: string;
 	foreignModelName: string;
-	query?: (entry: Document) => any;
 } & (
 	| {
-			method: 'count' | 'custom';
+			method: 'count';
+			query?: (entry: TEntry) => any;
 	  }
 	| {
 			method: 'sum';
 			foreignSumKey: string;
+			query?: (entry: TEntry) => any;
 	  }
-);*/
-type Spec = any;
+	| {
+			method: 'custom';
+			query: (entry: TEntry) => any;
+	  }
+);
 
-const allDeriveds: Array<{
+type Info<TEntry extends EnhancedEntry<any>> = {
 	localModelName: string;
-	spec: Spec;
+	spec: Spec<TEntry>;
 	run: (entry: Document) => Promise<void>;
-}> = [];
+};
+
+const allDeriveds: Array<Info<EnhancedEntry<any>>> = [];
 let synchingPromise: Promise<void> | null = null;
 // let syncDone = {};
 
@@ -41,15 +53,18 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 	}
 
 	synchingPromise = new Promise((resolve, reject) => {
-		const infosByModelName = allDeriveds.reduce((sum, info) => {
-			if (!sum[info.localModelName]) {
-				sum[info.localModelName] = [];
-			}
+		const infosByModelName = allDeriveds.reduce(
+			(sum: Record<string, Info<EnhancedEntry<any>>[]>, info) => {
+				if (!sum[info.localModelName]) {
+					sum[info.localModelName] = [];
+				}
 
-			sum[info.localModelName].push(info);
+				sum[info.localModelName].push(info);
 
-			return sum;
-		}, {});
+				return sum;
+			},
+			{},
+		);
 
 		const limitModel = pLimit(4);
 		const limitRun = pLimit(60);
@@ -101,9 +116,9 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 	return promise;
 };
 
-export default function externalPluginDerived<TModel extends EnhancedModel>(
+export default function externalPluginDerived<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
-	options: Array<Spec>,
+	options: Array<Spec<ExtractEntryType<TModel>>>,
 ) {
 	// function shouldSkip(localModel, foreignModel, spec, entryOrEntryID) {
 	// 	if (!synchingPromise) {
@@ -127,8 +142,20 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 	// }
 
 	const createUpdater =
-		(queryFn) =>
-		async (localModel, foreignModel, spec, entryOrEntryID, save = true) => {
+		(
+			queryFn: (
+				foreignModel: EnhancedModel,
+				spec: Spec<EnhancedEntry<any>>,
+				entry: EnhancedEntry<any>,
+			) => Promise<any>,
+		) =>
+		async (
+			localModel: EnhancedModel,
+			foreignModel: EnhancedModel,
+			spec: Spec<EnhancedEntry<any>>,
+			entryOrEntryID: EnhancedEntry<any> | ObjectId,
+			save: boolean = true,
+		) => {
 			if (!entryOrEntryID) {
 				return;
 			}
@@ -174,13 +201,13 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 			...(spec.query ? spec.query(entry) : {}),
 		});
 
-		const sum = entries.reduce((sum, entry) => sum + entry.get(spec.foreignSumKey), 0);
+		const sum = entries.reduce((sum, entry) => sum + entry.get((spec as any).foreignSumKey), 0);
 
 		return sum;
 	});
 
 	const updateCustom = createUpdater(async (foreignModel, spec, entry) => {
-		return await spec.query(entry);
+		return await spec.query!(entry);
 	});
 
 	schema.methods.syncDerived = async function () {
@@ -224,7 +251,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 				watchedFields.push(spec.foreignSumKey);
 			}
 
-			mongoose.enhance._oncePreCompile(spec.foreignModelName, (foreignSchema) => {
+			mongoose.enhance.onceSchemaIsReady(spec.foreignModelName, (foreignSchema) => {
 				foreignSchema.whenPostModifiedOrNew(watchedFields, async function () {
 					if (synchingPromise) {
 						return;
@@ -239,7 +266,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 						operations.push(
 							updateFn(
 								mongoose.model(schema.modelName),
-								this.constructor,
+								this.constructor as TModel,
 								spec,
 								this.getOld(spec.foreignKey),
 							),
@@ -249,7 +276,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 					operations.push(
 						updateFn(
 							mongoose.model(schema.modelName),
-							this.constructor,
+							this.constructor as TModel,
 							spec,
 							this.get(spec.foreignKey),
 						),
@@ -261,7 +288,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 				foreignSchema.whenPostRemoved(function () {
 					return updateFn(
 						mongoose.model(schema.modelName),
-						this.constructor,
+						this.constructor as TModel,
 						spec,
 						this.get(spec.foreignKey),
 					);
@@ -272,7 +299,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel>(
 				localModelName: schema.modelName,
 				spec,
 				run: async (entry) => {
-					return updateFn(
+					await updateFn(
 						mongoose.model(schema.modelName),
 						mongoose.model(spec.foreignModelName),
 						spec,

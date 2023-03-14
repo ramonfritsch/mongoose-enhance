@@ -7,11 +7,11 @@ import validator from 'validator';
 import { Document, ObjectId, QueryCursor } from '.';
 
 const helpers = {
-	isEntry: <TEntry extends Document>(entry: TEntry | ObjectId): entry is TEntry => {
+	isEntry: <TEntry extends Document>(entry: any): entry is TEntry => {
 		return entry instanceof Document;
 	},
-	id: (entry: Document | ObjectId) => (helpers.isEntry(entry) ? entry._id : entry),
-	equals: (id1: Document | ObjectId, id2: Document | ObjectId) =>
+	id: (entry: Document | ObjectId | string) => (helpers.isEntry(entry) ? entry._id : entry),
+	equals: (id1: Document | ObjectId | string, id2: Document | ObjectId | string) =>
 		String(helpers.id(id1)) == String(helpers.id(id2)),
 	ciQuery: (value: string, loose?: boolean) =>
 		new RegExp(

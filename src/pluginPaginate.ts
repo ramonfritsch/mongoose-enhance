@@ -1,6 +1,6 @@
 import { EnhancedEntry, EnhancedModel, EnhancedSchema, ExtractEntryType } from '.';
 
-export type Result<TEntry extends EnhancedEntry> = {
+export type Result<TEntry extends EnhancedEntry<any>> = {
 	total: number;
 	entries: Array<TEntry>;
 	currentPage: number;
@@ -14,7 +14,7 @@ export type Result<TEntry extends EnhancedEntry> = {
 	last: number;
 };
 
-export type Statics<TEntry extends EnhancedEntry> = {
+export type Statics<TEntry extends EnhancedEntry<any>> = {
 	paginate: (
 		options: {
 			filters?: any;
@@ -25,24 +25,39 @@ export type Statics<TEntry extends EnhancedEntry> = {
 			select?: any;
 			sort?: any;
 		},
-		callback?: (err: Error | undefined, result: Result<TEntry>) => void,
+		callback?: (err: Error | undefined, result?: Result<TEntry>) => void,
 	) => {
-		exec: (callback: (err: Error | undefined, result: Result<TEntry>) => void) => void;
+		exec: (callback: (err: Error | undefined, result?: Result<TEntry>) => void) => void;
 	};
 };
 
-export default function pluginPaginate<TModel extends EnhancedModel>(
+export default function pluginPaginate<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
 ) {
-	schema.statics.paginate = function (options, callback = undefined) {
+	schema.statics.paginate = function (
+		options: {
+			filters?: any;
+			optionalExpression?: any;
+			page?: number;
+			pageSize?: number;
+			maxPages?: number;
+			select?: any;
+			sort?: any;
+		},
+		callback:
+			| ((err: any, result?: Result<ExtractEntryType<TModel>>) => void)
+			| undefined = undefined,
+	): {
+		exec: (callback: (err: any, result?: Result<ExtractEntryType<TModel>>) => void) => void;
+	} {
 		options = options || {};
 
 		const query = this.find(options.filters, options.optionalExpression);
 		const countQuery = this.find(options.filters);
 
-		query._originalExec = query.exec;
-		query._originalSort = query.sort;
-		query._originalSelect = query.select;
+		const originalExec = query.exec.bind(query);
+		const originalSort = query.sort.bind(query);
+		const originalSelect = query.select.bind(query);
 
 		const currentPage = parseInt(String(options.page)) || 1;
 		const pageSize = parseInt(String(options.pageSize)) || 50;
@@ -59,16 +74,19 @@ export default function pluginPaginate<TModel extends EnhancedModel>(
 			return query;
 		};
 
-		query.exec = async function (callback) {
+		// @ts-ignore
+		query.exec = async function (
+			callback: (err: any, result?: Result<ExtractEntryType<TModel>>) => void,
+		) {
 			try {
 				query.limit(pageSize).skip(skip);
 
 				if (options.select) {
-					query._originalSelect(options.select);
+					originalSelect(options.select);
 				}
 
 				if (options.sort) {
-					query._originalSort(options.sort);
+					originalSort(options.sort);
 				}
 
 				const [count, entries] = await Promise.all([
@@ -77,7 +95,7 @@ export default function pluginPaginate<TModel extends EnhancedModel>(
 					Object.keys(options.filters).length > 0
 						? countQuery.countDocuments()
 						: countQuery.estimatedDocumentCount(),
-					query._originalExec(),
+					originalExec(),
 				]);
 
 				const totalPages = Math.ceil(count / pageSize);
@@ -132,9 +150,10 @@ export default function pluginPaginate<TModel extends EnhancedModel>(
 		};
 
 		if (callback) {
-			return query(callback);
+			// @ts-ignore
+			return query.exec(callback);
 		}
 
 		return query;
-	} as Statics<ExtractEntryType<TModel>>['paginate'];
+	};
 }

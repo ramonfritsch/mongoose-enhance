@@ -35,7 +35,7 @@ describe('paginate', () => {
 
 		let result: Result<ExtractEntryType<typeof User>> = await new Promise((resolve, reject) => {
 			User.paginate({ pageSize: 10 }).exec((err, data) =>
-				err ? reject(err) : resolve(data),
+				err || !data ? reject(err) : resolve(data),
 			);
 		});
 
@@ -56,7 +56,7 @@ describe('paginate', () => {
 
 		result = await new Promise((resolve, reject) => {
 			User.paginate({ pageSize: 5, page: 5, maxPages: 4 }).exec((err, data) =>
-				err ? reject(err) : resolve(data),
+				err || !data ? reject(err) : resolve(data),
 			);
 		});
 
