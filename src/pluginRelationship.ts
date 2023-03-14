@@ -1,11 +1,11 @@
 import pLimit from 'p-limit';
-import mongoose, { EnhancedEntry, EnhancedModel, EnhancedSchema, ObjectId } from '.';
+import mongoose, { EnhancedEntry, EnhancedModel, EnhancedSchema, Types } from '.';
 
 async function removeIfNotReferenced(
 	localModel: EnhancedModel<any>,
 	foreignModel: EnhancedModel<any>,
 	localKey: string,
-	entryOrEntryID: EnhancedEntry<any> | ObjectId,
+	entryOrEntryID: EnhancedEntry<any> | Types.ObjectId,
 ) {
 	const count = await localModel.countDocuments({
 		[localKey]: mongoose.id(entryOrEntryID),

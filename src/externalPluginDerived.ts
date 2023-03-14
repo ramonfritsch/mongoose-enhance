@@ -5,10 +5,8 @@ import mongoose, {
 	EnhancedModel,
 	EnhancedSchema,
 	ExtractEntryType,
-	ObjectId,
+	Types,
 } from '.';
-
-// TODO: More strict type here
 
 export type Methods = {
 	syncDerived: () => Promise<void>;
@@ -153,7 +151,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel<any>>
 			localModel: EnhancedModel,
 			foreignModel: EnhancedModel,
 			spec: Spec<EnhancedEntry<any>>,
-			entryOrEntryID: EnhancedEntry<any> | ObjectId,
+			entryOrEntryID: EnhancedEntry<any> | Types.ObjectId,
 			save: boolean = true,
 		) => {
 			if (!entryOrEntryID) {

@@ -30,8 +30,7 @@ describe('extraTypes', () => {
 				email: mongoose.SchemaTypes.Email,
 				username: mongoose.SchemaTypes.Username,
 				url: mongoose.SchemaTypes.URL,
-				// @ts-ignore
-				shortID: mongoose.Schema.Types.ShortId,
+				shortID: mongoose.SchemaTypes.ShortId,
 			},
 			{
 				timestamps: true,

@@ -1,4 +1,4 @@
-import { EnhancedModel, ExtractEntryType, ObjectId, PluginDerivedMethods } from '..';
+import { EnhancedModel, ExtractEntryType, PluginDerivedMethods, Types } from '..';
 import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
@@ -49,7 +49,7 @@ describe('derived', () => {
 		const User = mongoose.model(userSchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 			createdAt?: Date;
 			ignore?: boolean;
 		}>;
@@ -65,7 +65,7 @@ describe('derived', () => {
 		const Item = mongoose.model(itemSchema);
 
 		type SubitemModel = EnhancedModel<{
-			item?: ObjectId | ExtractEntryType<typeof Item>;
+			item?: Types.ObjectId | ExtractEntryType<typeof Item>;
 		}>;
 
 		const subItemSchema = mongoose.createSchema<SubitemModel>('SubItem', {
@@ -166,7 +166,7 @@ describe('derived', () => {
 		const User = mongoose.model(userSchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 			views?: number;
 		}>;
 
@@ -275,7 +275,7 @@ describe('derived', () => {
 		const Board = mongoose.model(boardSchema);
 
 		type BoardItemModel = EnhancedModel<{
-			board?: ObjectId | ExtractEntryType<typeof Board>;
+			board?: Types.ObjectId | ExtractEntryType<typeof Board>;
 			order?: number;
 			thumbnail?: string;
 			ignore?: boolean;
@@ -381,7 +381,7 @@ describe('derived', () => {
 		const User = mongoose.model(userSchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 			views?: number;
 		}>;
 
@@ -473,7 +473,7 @@ describe('derived', () => {
 		const User = mongoose.model(userSchema);
 
 		type BoardModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 			itemsCount?: number;
 		}>;
 
@@ -496,7 +496,7 @@ describe('derived', () => {
 		const Board = mongoose.model(boardSchema);
 
 		type ItemModel = EnhancedModel<{
-			board?: ObjectId | ExtractEntryType<typeof Board>;
+			board?: Types.ObjectId | ExtractEntryType<typeof Board>;
 		}>;
 
 		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
@@ -573,7 +573,7 @@ describe('derived', () => {
 		const User = mongoose.model(userSchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 			createdAt?: Date;
 			ignore?: boolean;
 		}>;

@@ -2,10 +2,10 @@ import mongooseOriginal, {
 	Document,
 	LeanDocument,
 	Model,
-	ObjectId,
 	Schema,
 	SchemaDefinition,
 	SchemaOptions,
+	Types,
 } from 'mongoose';
 import externalPluginDerived, {
 	Methods as ExternalPluginDerivedMethods,
@@ -32,7 +32,6 @@ if (global.Promise) {
 export * from 'mongoose';
 
 require('mongoose-strip-html-tags')(mongooseOriginal);
-require('mongoose-shortid-nodeps');
 
 type ExtraSchema<TModel extends AnyEnhancedModel> = {
 	modelName: string;
@@ -51,15 +50,23 @@ export type ExtractEntryType<TModel extends AnyEnhancedModel> = TModel extends E
 	? EnhancedEntry<TLeanEntry, TMethods, TQueryHelpers>
 	: never;
 
-type ExtractMethodsType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
+export type ExtractMethodsType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
 	infer TLeanEntry,
 	infer TMethods
 >
 	? TMethods
 	: never;
 
+export type ExtractStaticsType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
+	infer TLeanEntry,
+	infer TMethods,
+	infer TStatics
+>
+	? TStatics
+	: never;
+
 export type EnhancedEntry<TLeanEntry = {}, TMethods = {}, TQueryHelpers = {}> = Document<
-	ObjectId,
+	Types.ObjectId,
 	TQueryHelpers,
 	TLeanEntry
 > &
@@ -224,7 +231,6 @@ type MongooseEnhanced = Omit<typeof mongooseOriginal, 'model'> & {
 			derived: typeof externalPluginDerived;
 		};
 		onceSchemaIsReady: typeof onceSchemaIsReady;
-		// TODO: Test this
 		onceModelIsReady: typeof onceModelIsReady;
 		sync: () => Promise<void>;
 		syncRelationships: typeof syncRelationships;
@@ -271,7 +277,10 @@ mongoose.enhance = {
 
 export default mongoose;
 
-/*(async () => {
+/*
+// Usage example
+
+(async () => {
 	type UserLeanEntry = {
 		name: string;
 		name2?: string;
@@ -332,4 +341,5 @@ export default mongoose;
 	a = (await User.ensureEntry(user)).name;
 
 	await user.save();
-})();*/
+})();
+*/

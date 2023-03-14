@@ -1,4 +1,4 @@
-import { EnhancedModel, ExtractEntryType, ObjectId } from '..';
+import { EnhancedModel, ExtractEntryType, Types } from '..';
 import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
@@ -210,7 +210,7 @@ describe('when', () => {
 			nested?: Partial<{
 				field: string;
 			}>;
-			parent?: ObjectId | ExtractEntryType<UserModel>;
+			parent?: Types.ObjectId | ExtractEntryType<UserModel>;
 		}>;
 
 		const userSchema = mongoose.createSchema<UserModel>('User', {
@@ -537,7 +537,7 @@ describe('when', () => {
 		const User = mongoose.model(userSchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<UserModel>;
+			user?: Types.ObjectId | ExtractEntryType<UserModel>;
 		}>;
 
 		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
