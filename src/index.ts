@@ -32,7 +32,6 @@ if (global.Promise) {
 export * from 'mongoose';
 
 require('mongoose-strip-html-tags')(mongooseOriginal);
-require('mongoose-shortid-nodeps');
 
 type ExtraSchema<TModel extends AnyEnhancedModel> = {
 	modelName: string;
@@ -168,7 +167,7 @@ function createSchema<TModel extends AnyEnhancedModel, TSchemaDefinitionType = u
 	return schema;
 }
 
-function model<TModel extends AnyEnhancedModel>(
+function model<TModel extends AnyEnhancedModel = EnhancedModel>(
 	nameOrSchema: string | EnhancedSchema<TModel>,
 	schema?: EnhancedSchema<TModel> | Schema,
 ): TModel {
@@ -224,7 +223,6 @@ type MongooseEnhanced = Omit<typeof mongooseOriginal, 'model'> & {
 			derived: typeof externalPluginDerived;
 		};
 		onceSchemaIsReady: typeof onceSchemaIsReady;
-		// TODO: Test this
 		onceModelIsReady: typeof onceModelIsReady;
 		sync: () => Promise<void>;
 		syncRelationships: typeof syncRelationships;
@@ -271,7 +269,10 @@ mongoose.enhance = {
 
 export default mongoose;
 
-/*(async () => {
+/*
+// Usage example
+
+(async () => {
 	type UserLeanEntry = {
 		name: string;
 		name2?: string;
@@ -332,4 +333,5 @@ export default mongoose;
 	a = (await User.ensureEntry(user)).name;
 
 	await user.save();
-})();*/
+})();
+*/

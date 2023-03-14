@@ -1,12 +1,14 @@
 {
 	"compilerOptions": {
-		"target": "es5",
+		"target": "esnext",
 		"module": "commonjs",
 		"declaration": true,
 		"outDir": "./lib",
-		// "strict": true,
-		// "strictNullChecks": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"incremental": true,
+		"skipLibCheck": true,
+		"isolatedModules": true,
+		"forceConsistentCasingInFileNames": true
 	},
 	"include": ["src"],
 	"exclude": ["node_modules", "**/__tests__/*", "**/__tests_utils__/*"]

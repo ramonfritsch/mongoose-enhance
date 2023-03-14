@@ -1,5 +1,7 @@
-import { Schema } from 'mongoose';
+import { Schema, Types } from 'mongoose';
 import mongoose from './index';
+
+require('mongoose-shortid-nodeps');
 
 //Email
 class Email extends Schema.Types.String {
@@ -17,16 +19,6 @@ class Email extends Schema.Types.String {
 		}
 	}
 }
-
-// function Email(/*path, options*/) {
-// 	SchemaTypes.String.apply(this, arguments);
-
-// 	this.validate(mongoose.validation.isEmail, '{LABEL} is invalid.');
-// }
-
-// util.inherits(Email, SchemaTypes.String);
-
-// Email.prototype.cast = (value) => mongoose.validation.formatEmail(value);
 
 //Username
 class Username extends Schema.Types.String {
@@ -51,19 +43,6 @@ class Username extends Schema.Types.String {
 	}
 }
 
-// function Username(/*path, options*/) {
-// 	SchemaTypes.String.apply(this, arguments);
-
-// 	this.validate(
-// 		(value) => mongoose.validation.isUsername(value),
-// 		'{LABEL} is invalid. Use only letters, numbers or _ between 3 and 50 characters.',
-// 	);
-// }
-
-// util.inherits(Username, SchemaTypes.String);
-
-// Username.prototype.cast = (value) => mongoose.validation.formatUsername(value);
-
 //URL
 class URL extends Schema.Types.String {
 	constructor(path: string, options?: any, instance?: string) {
@@ -81,26 +60,18 @@ class URL extends Schema.Types.String {
 	}
 }
 
-// function URL(/*path, options*/) {
-// 	SchemaTypes.String.apply(this, arguments);
-
-// 	this.validate(mongoose.validation.isURL, '{LABEL} is invalid.');
-// }
-
-// util.inherits(URL, SchemaTypes.String);
-
-// URL.prototype.cast = (value) => mongoose.validation.formatURL(value);
-
 const ExtraSchemaTypes = {
 	Email,
 	Username,
 	URL,
+	ShortId: (Schema.Types as any).ShortId,
 } as const;
 
 const ExtraTypes = {
 	Email: String,
 	Username: String,
 	URL: String,
+	ShortId: (Types as any).ShortId,
 } as const;
 
 export default {

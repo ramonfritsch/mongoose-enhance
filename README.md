@@ -14,11 +14,11 @@ Schemas are now created using the `mongoose.createSchema` method.
 
 ### `onceSchemasAreReady`
 
-`onceSchemasAreReady` are not supported anymore.
+`onceSchemasAreReady` is now per schema with `onceSchemaIsReady`.
 
 ### `onceModelsAreReady`
 
-`onceModelsAreReady` are not supported anymore. You should run your code after models are created manually.
+`onceModelsAreReady` is now per model with `onceModelIsReady`.
 
 ### `ensureModel`
 

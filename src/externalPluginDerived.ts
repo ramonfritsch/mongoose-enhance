@@ -8,8 +8,6 @@ import mongoose, {
 	ObjectId,
 } from '.';
 
-// TODO: More strict type here
-
 export type Methods = {
 	syncDerived: () => Promise<void>;
 };
