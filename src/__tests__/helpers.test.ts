@@ -1,6 +1,50 @@
-import mongoose from '../index';
+import { EnhancedModel } from '..';
+import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
-describe('formatURL', () => {
+jest.setTimeout(30000);
+
+let mongoose: Awaited<ReturnType<typeof testMemoryServer.createMongoose>>;
+
+describe('helpers', () => {
+	beforeEach(async () => {
+		jest.resetModules();
+
+		mongoose = await testMemoryServer.createMongoose();
+	});
+
+	afterEach(async () => {
+		await mongoose.disconnect();
+	});
+
+	it('should compare two models', async () => {
+		const ModelA = mongoose.model(mongoose.createSchema<EnhancedModel>('ModelA', {}));
+		const ModelB = mongoose.model(mongoose.createSchema<EnhancedModel>('ModelB', {}));
+
+		const entry1 = new ModelA({});
+		await entry1.save();
+
+		const entry2 = new ModelA({});
+		await entry2.save();
+
+		const entry3 = new ModelB({});
+		await entry3.save();
+
+		const entry4 = (await ModelA.findOne({ _id: entry1._id! }))!;
+
+		expect(mongoose.equals(entry1, entry1)).toBe(true);
+		expect(mongoose.equals(entry1, entry4)).toBe(true);
+		expect(mongoose.equals(entry1, entry4._id!)).toBe(true);
+		expect(mongoose.equals(entry1._id!, entry4)).toBe(true);
+		expect(mongoose.equals(String(entry1._id!), entry4)).toBe(true);
+		expect(mongoose.equals(entry1, String(entry4._id))).toBe(true);
+		expect(mongoose.equals(entry1, mongoose.Types.ObjectId(String(entry4._id)))).toBe(true);
+		expect(mongoose.equals(entry1, { _id: String(entry4._id) })).toBe(true);
+
+		expect(mongoose.equals(entry1, entry2)).toBe(false);
+		expect(mongoose.equals(entry1, entry3)).toBe(false);
+		expect(mongoose.equals(entry2, entry3)).toBe(false);
+	});
+
 	it('should not encode asset URL', () => {
 		const domainUrl = 'https://madebysix.com/project/kinfolk';
 		const assetUrl =

@@ -5,7 +5,7 @@ import mongoose, {
 	EnhancedModel,
 	EnhancedSchema,
 	ExtractEntryType,
-	ObjectId,
+	Types,
 } from '.';
 
 export type Methods = {
@@ -151,7 +151,7 @@ export default function externalPluginDerived<TModel extends EnhancedModel<any>>
 			localModel: EnhancedModel,
 			foreignModel: EnhancedModel,
 			spec: Spec<EnhancedEntry<any>>,
-			entryOrEntryID: EnhancedEntry<any> | ObjectId,
+			entryOrEntryID: EnhancedEntry<any> | Types.ObjectId,
 			save: boolean = true,
 		) => {
 			if (!entryOrEntryID) {

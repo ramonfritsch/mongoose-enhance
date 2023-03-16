@@ -2,10 +2,10 @@ import mongooseOriginal, {
 	Document,
 	LeanDocument,
 	Model,
-	ObjectId,
 	Schema,
 	SchemaDefinition,
 	SchemaOptions,
+	Types,
 } from 'mongoose';
 import externalPluginDerived, {
 	Methods as ExternalPluginDerivedMethods,
@@ -50,15 +50,23 @@ export type ExtractEntryType<TModel extends AnyEnhancedModel> = TModel extends E
 	? EnhancedEntry<TLeanEntry, TMethods, TQueryHelpers>
 	: never;
 
-type ExtractMethodsType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
+export type ExtractMethodsType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
 	infer TLeanEntry,
 	infer TMethods
 >
 	? TMethods
 	: never;
 
+export type ExtractStaticsType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
+	infer TLeanEntry,
+	infer TMethods,
+	infer TStatics
+>
+	? TStatics
+	: never;
+
 export type EnhancedEntry<TLeanEntry = {}, TMethods = {}, TQueryHelpers = {}> = Document<
-	ObjectId,
+	Types.ObjectId,
 	TQueryHelpers,
 	TLeanEntry
 > &

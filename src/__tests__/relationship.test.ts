@@ -1,4 +1,4 @@
-import { EnhancedModel, ExtractEntryType, ObjectId } from '..';
+import { EnhancedModel, ExtractEntryType, Types } from '..';
 import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
@@ -29,7 +29,7 @@ describe('relationship', () => {
 		const User = mongoose.model(userSchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 		}>;
 
 		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
@@ -64,7 +64,7 @@ describe('relationship', () => {
 	it('should delete using manyToOne', async () => {
 		type UserModel = EnhancedModel<{
 			name?: string;
-			company?: ObjectId | ExtractEntryType<CompanyModel>;
+			company?: Types.ObjectId | ExtractEntryType<CompanyModel>;
 		}>;
 
 		const userSchema = mongoose.createSchema<UserModel>('User', {
@@ -130,7 +130,7 @@ describe('relationship', () => {
 	it('should sync relationships', async () => {
 		type UserModel = EnhancedModel<{
 			name?: string;
-			company?: ObjectId | ExtractEntryType<CompanyModel>;
+			company?: Types.ObjectId | ExtractEntryType<CompanyModel>;
 		}>;
 
 		const userSchema = mongoose.createSchema<UserModel>('User', {
@@ -154,7 +154,7 @@ describe('relationship', () => {
 		const Company = mongoose.model(companySchema);
 
 		type ItemModel = EnhancedModel<{
-			user?: ObjectId | ExtractEntryType<typeof User>;
+			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 		}>;
 
 		const itemSchema = mongoose.createSchema<ItemModel>('Item', {

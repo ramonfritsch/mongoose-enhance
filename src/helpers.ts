@@ -4,24 +4,38 @@ import pLimit from 'p-limit';
 import path from 'path';
 import url from 'url';
 import validator from 'validator';
-import { Document, ObjectId, QueryCursor } from '.';
+import { Document, EnhancedEntry, LeanDocument, QueryCursor, Types } from '.';
 
 const helpers = {
-	isEntry: <TEntry extends Document>(entry: any): entry is TEntry => {
+	isEntry: <TEntry extends EnhancedEntry>(entry: any): entry is TEntry => {
 		return entry instanceof Document;
 	},
-	id: (entry: Document | ObjectId | string) => (helpers.isEntry(entry) ? entry._id : entry),
-	equals: (id1: Document | ObjectId | string, id2: Document | ObjectId | string) =>
-		String(helpers.id(id1)) == String(helpers.id(id2)),
+	id: (
+		entry: EnhancedEntry | LeanDocument<any> | string | Types.ObjectId,
+	): Types.ObjectId | undefined => {
+		if (helpers.isEntry(entry)) {
+			return entry._id;
+		} else if (typeof entry === 'string') {
+			return new Types.ObjectId(entry);
+		} else if (entry && typeof entry === 'object' && '_id' in entry) {
+			return new Types.ObjectId(String(entry._id));
+		} else if (entry) {
+			return new Types.ObjectId(String(entry));
+		}
+	},
+	equals: (
+		id1: EnhancedEntry | string | Types.ObjectId | LeanDocument<any>,
+		id2: EnhancedEntry | string | Types.ObjectId | LeanDocument<any>,
+	) => String(helpers.id(id1)) == String(helpers.id(id2)),
 	ciQuery: (value: string, loose?: boolean) =>
 		new RegExp(
 			(loose ? '' : '^') + _.escapeRegExp((value || '').toLowerCase()) + (loose ? '' : '$'),
 			'i',
 		),
-	cursorEachAsyncLimit: async <TDocument = Document>(
+	cursorEachAsyncLimit: async <TEntry extends EnhancedEntry = EnhancedEntry>(
 		concurrentLimit: number,
-		cursor: QueryCursor<TDocument>,
-		eachCallback: (entry: TDocument) => Promise<any>,
+		cursor: QueryCursor<TEntry>,
+		eachCallback: (entry: TEntry) => Promise<any>,
 	) => {
 		const limit = pLimit(concurrentLimit);
 

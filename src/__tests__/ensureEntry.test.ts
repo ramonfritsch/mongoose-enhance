@@ -1,4 +1,4 @@
-import { EnhancedModel, ExtractEntryType, ObjectId } from '..';
+import { EnhancedModel, ExtractEntryType, Types } from '..';
 import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
@@ -29,7 +29,7 @@ describe('ensureModel', () => {
 
 		type UserModel = EnhancedModel<{
 			name?: string;
-			company?: ObjectId | ExtractEntryType<typeof Company>;
+			company?: Types.ObjectId | ExtractEntryType<typeof Company>;
 		}>;
 
 		const userSchema = mongoose.createSchema<UserModel>('User', {
