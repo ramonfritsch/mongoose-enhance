@@ -22,7 +22,7 @@ describe('metrics', () => {
 		mongoose.enhance.enableMetrics({
 			thresholdInMilliseconds: 0,
 			callback: async (info) => {
-				fn(info.modelName, info.name, info.filters);
+				fn(info.modelName, info.name, info.filterSignature);
 			},
 		});
 

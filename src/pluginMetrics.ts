@@ -1,4 +1,4 @@
-import { AnyObject, Query, QueryOptions } from 'mongoose';
+import { AnyObject, FilterQuery, Query, QueryOptions } from 'mongoose';
 import mongoose, { EnhancedModel, EnhancedSchema } from '.';
 
 type Signature = {
@@ -15,7 +15,11 @@ function filterSignature(fields: AnyObject): Signature {
 			const signature = filterSignature(value[0]);
 
 			result[key] = value.length > 1 ? [signature, '...'] : [signature];
-		} else if (typeof value === 'object' && value.constructor === Object) {
+		} else if (
+			typeof value === 'object' &&
+			value.constructor === Object &&
+			!mongoose.isValidObjectId(value)
+		) {
 			result[key] = filterSignature(value);
 		} else {
 			result[key] = 1;
@@ -69,8 +73,10 @@ function makePost(modelName: string, type: 'findOne' | 'find') {
 			return;
 		}
 
+		const filter = this.getFilter();
+
 		const optionsCopy = { ...options };
-		const r = await this.findOne(this.getFilter(), this.projection(), {
+		const r = await this.findOne(filter, this.projection(), {
 			...options,
 			explain: true,
 		});
@@ -81,7 +87,8 @@ function makePost(modelName: string, type: 'findOne' | 'find') {
 			duration,
 			name: (this as any)._metricsName || null,
 			source: (this as any)._metricsSource || null,
-			filters: filterSignature(this.getFilter()),
+			filter,
+			filterSignature: filterSignature(filter),
 			options: optionsCopy,
 			stages: stagesFromQueryPlan(r.queryPlanner.winningPlan),
 		};
@@ -117,7 +124,8 @@ export type MetricsInfo = {
 	duration: number;
 	name: string | null;
 	source: string | null;
-	filters: Signature;
+	filter: FilterQuery<any>;
+	filterSignature: Signature;
 	options: QueryOptions;
 	stages: string[];
 };
