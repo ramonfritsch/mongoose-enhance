@@ -14,6 +14,10 @@ import externalPluginDerived, {
 import extraTypes from './extraTypes';
 import helpers from './helpers';
 import pluginEnsureEntry, { Statics as PluginEnsureEntryStatics } from './pluginEnsureEntry';
+import pluginMetrics, {
+	MetricsInfo,
+	QueryHelpers as PluginMetricsQueryHelpers,
+} from './pluginMetrics';
 import pluginOld, { Methods as PluginOldMethods } from './pluginOld';
 import pluginPaginate, { Statics as PluginPaginateStatics } from './pluginPaginate';
 import pluginRelationship, {
@@ -40,6 +44,7 @@ type ExtraSchema<TModel extends AnyEnhancedModel> = {
 type ExtraMethods = PluginOldMethods & PluginRestoreMethods & PluginWasModifiedMethods;
 type ExtraStatics<TEntry extends AnyEnhancedEntry> = PluginEnsureEntryStatics<TEntry> &
 	PluginPaginateStatics<TEntry>;
+type ExtraQueryHelpers = PluginMetricsQueryHelpers;
 
 export type ExtractEntryType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
 	infer TLeanEntry,
@@ -67,7 +72,7 @@ export type ExtractStaticsType<TModel extends AnyEnhancedModel> = TModel extends
 
 export type EnhancedEntry<TLeanEntry = {}, TMethods = {}, TQueryHelpers = {}> = Document<
 	Types.ObjectId,
-	TQueryHelpers,
+	TQueryHelpers & ExtraQueryHelpers,
 	TLeanEntry
 > &
 	TLeanEntry &
@@ -80,11 +85,11 @@ export type EnhancedModel<
 	TQueryHelpers = {},
 > = Model<
 	EnhancedEntry<TLeanEntry, TMethods, TQueryHelpers>,
-	TQueryHelpers,
+	TQueryHelpers & ExtraQueryHelpers,
 	TMethods & ExtraMethods
 > &
 	TStatics &
-	ExtraStatics<EnhancedEntry<TLeanEntry, TMethods, TQueryHelpers>>;
+	ExtraStatics<EnhancedEntry<TLeanEntry, TMethods, TQueryHelpers & ExtraQueryHelpers>>;
 export type EnhancedSchema<TModel extends AnyEnhancedModel> = Schema<
 	ExtractEntryType<TModel>,
 	TModel,
@@ -171,6 +176,7 @@ function createSchema<TModel extends AnyEnhancedModel, TSchemaDefinitionType = u
 	pluginValidators(schema);
 	pluginWasModified(schema);
 	pluginWhen(schema);
+	pluginMetrics(schema);
 
 	return schema;
 }
@@ -222,11 +228,36 @@ function onceModelIsReady<TModel extends AnyEnhancedModel>(
 	}
 }
 
+const metrics = {
+	enabled: false,
+	currentSample: 0,
+
+	callback: async (info: MetricsInfo) => {},
+	sampleRate: 1,
+	thresholdInMilliseconds: 100, // Only queries that take longer than 100 ms by default
+};
+
+// Important to call this before creating the models
+function enableMetrics(options: {
+	sampleRate?: number;
+	thresholdInMilliseconds?: number;
+	callback: typeof metrics.callback;
+}): void {
+	metrics.enabled = true;
+	metrics.callback = options.callback;
+	metrics.sampleRate = options.sampleRate || metrics.sampleRate;
+	metrics.thresholdInMilliseconds =
+		options.thresholdInMilliseconds ?? metrics.thresholdInMilliseconds;
+}
+
 type MongooseEnhanced = Omit<typeof mongooseOriginal, 'model'> & {
 	SchemaTypes: typeof mongooseOriginal.SchemaTypes & typeof extraTypes.ExtraSchemaTypes;
 	Types: typeof mongooseOriginal.Types & typeof extraTypes.ExtraTypes;
 	model: typeof model;
 	enhance: {
+		_internal: {
+			metrics: typeof metrics;
+		};
 		plugins: {
 			derived: typeof externalPluginDerived;
 		};
@@ -235,8 +266,8 @@ type MongooseEnhanced = Omit<typeof mongooseOriginal, 'model'> & {
 		sync: () => Promise<void>;
 		syncRelationships: typeof syncRelationships;
 		syncDerived: typeof syncDerived;
+		enableMetrics: typeof enableMetrics;
 	};
-
 	createSchema: typeof createSchema;
 } & typeof helpers;
 
@@ -262,6 +293,9 @@ Object.entries(helpers).forEach(([name, fn]) => {
 mongoose.createSchema = createSchema;
 mongoose.model = model;
 mongoose.enhance = {
+	_internal: {
+		metrics,
+	},
 	plugins: {
 		derived: externalPluginDerived,
 	},
@@ -273,6 +307,7 @@ mongoose.enhance = {
 	},
 	syncRelationships,
 	syncDerived,
+	enableMetrics,
 };
 
 export default mongoose;
