@@ -15,7 +15,7 @@ function filterSignature(fields: AnyObject): Signature {
 			const signature = filterSignature(value[0]);
 
 			result[key] = value.length > 1 ? [signature, '...'] : [signature];
-		} else if (typeof value === 'object') {
+		} else if (typeof value === 'object' && value.constructor === Object) {
 			result[key] = filterSignature(value);
 		} else {
 			result[key] = 1;
@@ -136,9 +136,10 @@ export default function pluginMetrics<TModel extends EnhancedModel<any>>(
 	if (mongoose.enhance._internal.metrics.enabled) {
 		schema.pre('findOne', pre);
 		schema.pre('find', pre);
-		schema.pre('aggregate', pre);
 
 		schema.post('findOne', makePost(schema.modelName, 'findOne'));
 		schema.post('find', makePost(schema.modelName, 'find'));
+
+		// TODO: Aggregations
 	}
 }

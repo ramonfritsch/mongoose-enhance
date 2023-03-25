@@ -22,7 +22,7 @@ describe('metrics', () => {
 		mongoose.enhance.enableMetrics({
 			thresholdInMilliseconds: 0,
 			callback: async (info) => {
-				fn(info.modelName);
+				fn(info.modelName, info.name, info.filters);
 			},
 		});
 
@@ -50,7 +50,7 @@ describe('metrics', () => {
 
 		const Item = mongoose.model(itemSchema);
 
-		await new User({
+		const user = await new User({
 			name: 'Name',
 			email: 'email@gmail.com',
 		}).save();
@@ -66,12 +66,23 @@ describe('metrics', () => {
 
 		await Item.findOne({ name: 'Item name' }).name('name3').exec();
 
+		await User.findOne({ _id: user._id }).name('name4').exec();
+
 		await new Promise((resolve) => setImmediate(resolve));
 
-		expect(fn).toHaveBeenCalledTimes(3);
-		expect(fn).toHaveBeenNthCalledWith(1, 'User');
-		expect(fn).toHaveBeenNthCalledWith(2, 'User');
-		expect(fn).toHaveBeenNthCalledWith(3, 'Item');
+		expect(fn).toHaveBeenCalledTimes(4);
+		expect(fn.mock.calls[0][0]).toBe('User');
+		expect(fn.mock.calls[0][1]).toBe('name1');
+		expect(fn.mock.calls[0][2]).toEqual({ name: 1 });
+		expect(fn.mock.calls[1][0]).toBe('User');
+		expect(fn.mock.calls[1][1]).toBe('name2');
+		expect(fn.mock.calls[1][2]).toEqual({ $or: [{ email: 1 }, '...'] });
+		expect(fn.mock.calls[2][0]).toBe('Item');
+		expect(fn.mock.calls[2][1]).toBe('name3');
+		expect(fn.mock.calls[2][2]).toEqual({ name: 1 });
+		expect(fn.mock.calls[3][0]).toBe('User');
+		expect(fn.mock.calls[3][1]).toBe('name4');
+		expect(fn.mock.calls[3][2]).toEqual({ _id: 1 });
 	});
 
 	it('should sample it properly', async () => {
