@@ -5,20 +5,21 @@ import mongooseOriginal, {
 	Schema,
 	SchemaDefinition,
 	SchemaOptions,
-	Types,
+	Types
 } from 'mongoose';
 import externalPluginDerived, {
 	Methods as ExternalPluginDerivedMethods,
-	syncDerived,
+	syncDerived
 } from './externalPluginDerived';
 import extraTypes from './extraTypes';
 import helpers from './helpers';
 import pluginEnsureEntry, { Statics as PluginEnsureEntryStatics } from './pluginEnsureEntry';
+import pluginMetrics from './pluginMetrics';
 import pluginOld, { Methods as PluginOldMethods } from './pluginOld';
 import pluginPaginate, { Statics as PluginPaginateStatics } from './pluginPaginate';
 import pluginRelationship, {
 	Schema as PluginRelationshipSchema,
-	syncRelationships,
+	syncRelationships
 } from './pluginRelationship';
 import pluginRestore, { Methods as PluginRestoreMethods } from './pluginRestore';
 import pluginValidators from './pluginValidators';
@@ -171,6 +172,7 @@ function createSchema<TModel extends AnyEnhancedModel, TSchemaDefinitionType = u
 	pluginValidators(schema);
 	pluginWasModified(schema);
 	pluginWhen(schema);
+	pluginMetrics(schema);
 
 	return schema;
 }
