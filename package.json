@@ -1,6 +1,6 @@
 {
 	"name": "mongoose-enhance",
-	"version": "3.0.22",
+	"version": "3.0.23",
 	"description": "Helpful Mongoose enhancements",
 	"main": "lib/index.js",
 	"types": "lib/index.d.ts",

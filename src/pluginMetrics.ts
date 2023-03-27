@@ -5,30 +5,34 @@ type Signature = {
 	[key: string]: Signature | 1 | [Signature] | [Signature, '...'];
 };
 
-function filterSignature(fields: AnyObject): Signature {
-	const result: Signature = {};
+function filterSignature(fields: AnyObject | null): Signature {
+	if (fields && typeof fields === 'object') {
+		const result: Signature = {};
 
-	Object.keys(fields).forEach((key) => {
-		const value = fields[key];
+		Object.keys(fields).forEach((key) => {
+			const value = fields[key];
 
-		if (Array.isArray(value) && value.length > 0) {
-			const signature = filterSignature(value[0]);
+			if (Array.isArray(value) && value.length > 0) {
+				const signature = filterSignature(value[0]);
 
-			result[key] = value.length > 1 ? [signature, '...'] : [signature];
-		} else if (
-			typeof value === 'object' &&
-			value.constructor === Object &&
-			!('_id' in value) &&
-			!('id' in value) &&
-			!Array.isArray(value)
-		) {
-			result[key] = filterSignature(value);
-		} else {
-			result[key] = 1;
-		}
-	});
+				result[key] = value.length > 1 ? [signature, '...'] : [signature];
+			} else if (
+				typeof value === 'object' &&
+				value.constructor === Object &&
+				!('_id' in value) &&
+				!('id' in value) &&
+				!Array.isArray(value)
+			) {
+				result[key] = filterSignature(value);
+			} else {
+				result[key] = 1;
+			}
+		});
 
-	return result;
+		return result;
+	} else {
+		return {};
+	}
 }
 
 function stagesFromQueryPlan(plan: any, stack: string[] = []): string[] {
@@ -83,6 +87,11 @@ function makePost(modelName: string, type: 'findOne' | 'find') {
 			explain: true,
 		});
 
+		let filterSign = null;
+		try {
+			filterSign = filterSignature(filter);
+		} catch (e) {}
+
 		const info: MetricsInfo = {
 			modelName,
 			type,
@@ -90,7 +99,7 @@ function makePost(modelName: string, type: 'findOne' | 'find') {
 			name: (this as any)._metricsName || null,
 			source: (this as any)._metricsSource || null,
 			filter,
-			filterSignature: filterSignature(filter),
+			filterSignature: filterSign || {},
 			options: optionsCopy,
 			stages: stagesFromQueryPlan(r.executionStats.executionStages),
 			count: r.executionStats.nReturned,
