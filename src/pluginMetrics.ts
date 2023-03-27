@@ -18,7 +18,9 @@ function filterSignature(fields: AnyObject): Signature {
 		} else if (
 			typeof value === 'object' &&
 			value.constructor === Object &&
-			!mongoose.isValidObjectId(value)
+			!('_id' in value) &&
+			!('id' in value) &&
+			!Array.isArray(value)
 		) {
 			result[key] = filterSignature(value);
 		} else {
@@ -90,7 +92,11 @@ function makePost(modelName: string, type: 'findOne' | 'find') {
 			filter,
 			filterSignature: filterSignature(filter),
 			options: optionsCopy,
-			stages: stagesFromQueryPlan(r.queryPlanner.winningPlan),
+			stages: stagesFromQueryPlan(r.executionStats.executionStages),
+			count: r.executionStats.nReturned,
+			internalDuration: r.executionStats.executionTimeMillis,
+			keysExamined: r.executionStats.totalKeysExamined,
+			docsExamined: r.executionStats.totalDocsExamined,
 		};
 
 		// Place on a set immediate so this can carry on executing
@@ -128,6 +134,10 @@ export type MetricsInfo = {
 	filterSignature: Signature;
 	options: QueryOptions;
 	stages: string[];
+	count: number;
+	internalDuration: number;
+	keysExamined: number;
+	docsExamined: number;
 };
 
 export type QueryHelpers = {
