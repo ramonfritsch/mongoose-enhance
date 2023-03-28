@@ -1,4 +1,4 @@
-import { AnyObject, FilterQuery, Query, QueryOptions } from 'mongoose';
+import { Aggregate, AnyObject, FilterQuery, Query, QueryOptions } from 'mongoose';
 import mongoose, { EnhancedModel, EnhancedSchema } from '.';
 
 type Signature = {
@@ -21,6 +21,7 @@ function filterSignature(fields: AnyObject | null): Signature {
 				value.constructor === Object &&
 				!('_id' in value) &&
 				!('id' in value) &&
+				!('_bsontype' in value) &&
 				!Array.isArray(value)
 			) {
 				result[key] = filterSignature(value);
@@ -45,8 +46,48 @@ function stagesFromQueryPlan(plan: any, stack: string[] = []): string[] {
 	return stack.reverse();
 }
 
-async function pre(this: Query<any, any>) {
-	const options = this.getOptions();
+function getOptions(query: Query<any, any> | Aggregate<any>): QueryOptions {
+	if ('getOptions' in query) {
+		return query.getOptions();
+	} else if ('options' in query) {
+		return (query as any).options;
+	}
+
+	return {};
+}
+
+function getQueryRunInfo(query: Query<any, any> | Aggregate<any>): null | {
+	options: QueryOptions;
+	duration: number;
+} {
+	const options = getOptions(query);
+
+	if (options.explain) {
+		return null;
+	}
+
+	const duration = performance.now() - (query as any)._metricsStartTime;
+
+	if (duration < mongoose.enhance._internal.metrics.thresholdInMilliseconds) {
+		return null;
+	}
+
+	if (
+		mongoose.enhance._internal.metrics.currentSample %
+			mongoose.enhance._internal.metrics.sampleRate !==
+		0
+	) {
+		return null;
+	}
+
+	return {
+		options,
+		duration,
+	};
+}
+
+async function pre(this: Query<any, any> | Aggregate<any>) {
+	const options = getOptions(this);
 
 	if (options.explain) {
 		return;
@@ -59,38 +100,33 @@ async function pre(this: Query<any, any>) {
 
 function makePost(modelName: string, type: 'findOne' | 'find') {
 	return async function (this: Query<any, any>) {
-		const options = this.getOptions();
+		const runInfo = getQueryRunInfo(this);
 
-		if (options.explain) {
+		if (!runInfo) {
 			return;
 		}
 
-		const duration = performance.now() - (this as any)._metricsStartTime;
-
-		if (duration < mongoose.enhance._internal.metrics.thresholdInMilliseconds) {
-			return;
-		}
-
-		if (
-			mongoose.enhance._internal.metrics.currentSample %
-				mongoose.enhance._internal.metrics.sampleRate !==
-			0
-		) {
-			return;
-		}
+		const { options, duration } = runInfo;
 
 		const filter = this.getFilter();
 
 		const optionsCopy = { ...options };
-		const r = await this.findOne(filter, this.projection(), {
+
+		const findMethod =
+			type === 'findOne'
+				? this.model.findOne.bind(this.model)
+				: this.model.find.bind(this.model);
+		const r = await findMethod(filter, this.projection(), {
 			...options,
 			explain: true,
-		});
+		}).exec();
 
 		let filterSign = null;
 		try {
 			filterSign = filterSignature(filter);
 		} catch (e) {}
+
+		const executionStats = Array.isArray(r) ? r[0].executionStats : r.executionStats;
 
 		const info: MetricsInfo = {
 			modelName,
@@ -101,11 +137,11 @@ function makePost(modelName: string, type: 'findOne' | 'find') {
 			filter,
 			filterSignature: filterSign || {},
 			options: optionsCopy,
-			stages: stagesFromQueryPlan(r.executionStats.executionStages),
-			count: r.executionStats.nReturned,
-			internalDuration: r.executionStats.executionTimeMillis,
-			keysExamined: r.executionStats.totalKeysExamined,
-			docsExamined: r.executionStats.totalDocsExamined,
+			stages: stagesFromQueryPlan(executionStats.executionStages),
+			count: executionStats.nReturned,
+			internalDuration: executionStats.executionTimeMillis,
+			keysExamined: executionStats.totalKeysExamined,
+			docsExamined: executionStats.totalDocsExamined,
 		};
 
 		// Place on a set immediate so this can carry on executing
@@ -135,7 +171,7 @@ function source<TQuery>(this: TQuery, source: string): TQuery {
 
 export type MetricsInfo = {
 	modelName: string;
-	type: 'findOne' | 'find';
+	type: 'findOne' | 'find' | 'aggregate';
 	duration: number;
 	name: string | null;
 	source: string | null;
@@ -154,6 +190,13 @@ export type QueryHelpers = {
 	source: typeof source;
 };
 
+// declare module mongoose {
+// 	interface Aggregate {
+// 		name: typeof name;
+// 		source: typeof source;
+// 	}
+// }
+
 export default function pluginMetrics<TModel extends EnhancedModel<any>>(
 	schema: EnhancedSchema<TModel>,
 ) {
@@ -163,10 +206,63 @@ export default function pluginMetrics<TModel extends EnhancedModel<any>>(
 	if (mongoose.enhance._internal.metrics.enabled) {
 		schema.pre('findOne', pre);
 		schema.pre('find', pre);
+		schema.pre('aggregate', pre);
 
 		schema.post('findOne', makePost(schema.modelName, 'findOne'));
 		schema.post('find', makePost(schema.modelName, 'find'));
 
-		// TODO: Aggregations
+		schema.post('aggregate', async function (this: Aggregate<any>) {
+			const runInfo = getQueryRunInfo(this);
+
+			if (!runInfo) {
+				return;
+			}
+
+			const { options, duration } = runInfo;
+
+			const model = mongoose.model(schema.modelName);
+
+			const optionsCopy = { ...options };
+			const pipeline = this.pipeline();
+
+			const r = await model
+				.aggregate(pipeline)
+				.option({
+					...options,
+					explain: true,
+				})
+				.exec();
+
+			let filterSign = null;
+			try {
+				filterSign = filterSignature(pipeline);
+			} catch (e) {}
+
+			const executionStats = r[0].stages[0].$cursor.executionStats;
+
+			const info: MetricsInfo = {
+				modelName: schema.modelName,
+				type: 'aggregate',
+				duration,
+				name: null,
+				source: null,
+				// name: (this as any)._metricsName || null,
+				// source: (this as any)._metricsSource || null,
+				filter: pipeline,
+				filterSignature: filterSign || {},
+				options: optionsCopy,
+				stages: stagesFromQueryPlan(executionStats.executionStages),
+				count: executionStats.nReturned,
+				internalDuration: executionStats.executionTimeMillis,
+				keysExamined: executionStats.totalKeysExamined,
+				docsExamined: executionStats.totalDocsExamined,
+			};
+
+			// Place on a set immediate so this can carry on executing
+			setImmediate(() => {
+				mongoose.enhance._internal.metrics.callback(info);
+			});
+		});
+		// TODO: Aggregations name and source
 	}
 }
