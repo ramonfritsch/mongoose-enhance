@@ -238,7 +238,11 @@ export default function pluginMetrics<TModel extends EnhancedModel<any>>(
 				filterSign = filterSignature(pipeline);
 			} catch (e) {}
 
-			const executionStats = r[0].stages[0].$cursor.executionStats;
+			let executionStats: AnyObject = {};
+			try {
+				executionStats = r[0].stages[0].$cursor.executionStats;
+			} catch (e) {}
+			executionStats = executionStats || {};
 
 			const info: MetricsInfo = {
 				modelName: schema.modelName,
@@ -251,11 +255,13 @@ export default function pluginMetrics<TModel extends EnhancedModel<any>>(
 				filter: pipeline,
 				filterSignature: filterSign || {},
 				options: optionsCopy,
-				stages: stagesFromQueryPlan(executionStats.executionStages),
-				count: executionStats.nReturned,
-				internalDuration: executionStats.executionTimeMillis,
-				keysExamined: executionStats.totalKeysExamined,
-				docsExamined: executionStats.totalDocsExamined,
+				stages: executionStats.executionStages
+					? stagesFromQueryPlan(executionStats.executionStages)
+					: [],
+				count: executionStats.nReturned || 0,
+				internalDuration: executionStats.executionTimeMillis || 0,
+				keysExamined: executionStats.totalKeysExamined || 0,
+				docsExamined: executionStats.totalDocsExamined || 0,
 			};
 
 			// Place on a set immediate so this can carry on executing
