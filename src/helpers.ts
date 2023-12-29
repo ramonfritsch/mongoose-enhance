@@ -10,23 +10,23 @@ const helpers = {
 	isEntry: <TEntry extends EnhancedEntry>(entry: any): entry is TEntry => {
 		return entry instanceof Document;
 	},
-	id: (
-		entry: EnhancedEntry | LeanDocument<any> | string | Types.ObjectId,
-	): Types.ObjectId | undefined => {
+	id: (entry: EnhancedEntry | LeanDocument<any> | string | Types.ObjectId): Types.ObjectId => {
 		if (helpers.isEntry(entry)) {
-			return entry._id;
+			return entry._id || Types.ObjectId();
 		} else if (typeof entry === 'string') {
-			return new Types.ObjectId(entry);
+			return Types.ObjectId(entry);
 		} else if (entry && typeof entry === 'object' && '_id' in entry) {
-			return new Types.ObjectId(String(entry._id));
+			return Types.ObjectId(String(entry._id));
 		} else if (entry) {
-			return new Types.ObjectId(String(entry));
+			return Types.ObjectId(String(entry));
 		}
+
+		return Types.ObjectId();
 	},
 	equals: (
-		id1: EnhancedEntry | string | Types.ObjectId | LeanDocument<any>,
-		id2: EnhancedEntry | string | Types.ObjectId | LeanDocument<any>,
-	) => String(helpers.id(id1)) == String(helpers.id(id2)),
+		id1: EnhancedEntry | string | Types.ObjectId | LeanDocument<any> | undefined,
+		id2: EnhancedEntry | string | Types.ObjectId | LeanDocument<any> | undefined,
+	) => id1 && id2 && String(helpers.id(id1)) == String(helpers.id(id2)),
 	ciQuery: (value: string, loose?: boolean) =>
 		new RegExp(
 			(loose ? '' : '^') + _.escapeRegExp((value || '').toLowerCase()) + (loose ? '' : '$'),
