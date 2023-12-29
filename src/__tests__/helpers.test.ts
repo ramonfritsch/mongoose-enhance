@@ -33,7 +33,7 @@ describe('helpers', () => {
 
 		expect(mongoose.equals(entry1, entry1)).toBe(true);
 		expect(mongoose.equals(entry1, entry4)).toBe(true);
-		expect(mongoose.equals(entry1, entry4._id!)).toBe(true);
+		expect(mongoose.equals(entry1, entry4._id)).toBe(true);
 		expect(mongoose.equals(entry1._id!, entry4)).toBe(true);
 		expect(mongoose.equals(String(entry1._id!), entry4)).toBe(true);
 		expect(mongoose.equals(entry1, String(entry4._id))).toBe(true);
