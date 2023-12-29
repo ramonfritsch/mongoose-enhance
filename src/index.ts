@@ -77,7 +77,9 @@ export type EnhancedEntry<TLeanEntry = {}, TMethods = {}, TQueryHelpers = {}> = 
 > &
 	TLeanEntry &
 	TMethods &
-	ExtraMethods;
+	ExtraMethods & {
+		_id: mongooseOriginal.Types.ObjectId;
+	};
 export type EnhancedModel<
 	TLeanEntry = {},
 	TMethods = {},
