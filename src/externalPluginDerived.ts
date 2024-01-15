@@ -1,6 +1,6 @@
 import pLimit from 'p-limit';
 import mongoose, {
-	Document,
+	AnyObject,
 	EnhancedEntry,
 	EnhancedModel,
 	EnhancedSchema,
@@ -12,35 +12,44 @@ export type Methods = {
 	syncDerived: () => Promise<void>;
 };
 
-type Spec<TEntry extends EnhancedEntry<any>> = {
-	defaultValue?: any;
-	localKey?: string;
+type Spec<TEntry extends EnhancedEntry<AnyObject>> = {
 	localField: string;
-	foreignKey: string;
-	foreignModelName: string;
+	defaultValue?: number;
 } & (
 	| {
 			method: 'count';
-			query?: (entry: TEntry) => any;
+			foreignKey: string;
+			foreignModelName: string;
+			localKey?: string;
 	  }
 	| {
 			method: 'sum';
+			foreignKey: string;
+			foreignModelName: string;
 			foreignSumKey: string;
-			query?: (entry: TEntry) => any;
+			localKey?: string;
 	  }
 	| {
 			method: 'custom';
-			query: (entry: TEntry) => any;
+			calculate: (entry: TEntry) => Promise<any>;
+			subscribeInvalidations: (
+				invalidate: (
+					entryOrEntryID: Types.ObjectId | TEntry | null | undefined,
+					save?: boolean,
+				) => Promise<void>,
+			) => void;
 	  }
 );
 
-type Info<TEntry extends EnhancedEntry<any>> = {
+type AllDerivedInfo = {
 	localModelName: string;
-	spec: Spec<TEntry>;
-	run: (entry: Document) => Promise<void>;
+	invalidate: (
+		entryOrEntryID: Types.ObjectId | ExtractEntryType<EnhancedModel<any>> | null | undefined,
+		save?: boolean,
+	) => Promise<void>;
 };
 
-const allDeriveds: Array<Info<EnhancedEntry<any>>> = [];
+const allDeriveds: Array<AllDerivedInfo> = [];
 let synchingPromise: Promise<void> | null = null;
 // let syncDone = {};
 
@@ -52,7 +61,7 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 
 	synchingPromise = new Promise((resolve, reject) => {
 		const infosByModelName = allDeriveds.reduce(
-			(sum: Record<string, Info<EnhancedEntry<any>>[]>, info) => {
+			(sum: Record<string, AllDerivedInfo[]>, info) => {
 				if (!sum[info.localModelName]) {
 					sum[info.localModelName] = [];
 				}
@@ -65,7 +74,7 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 		);
 
 		const limitModel = pLimit(4);
-		const limitRun = pLimit(60);
+		const limitInvalidate = pLimit(60);
 
 		Promise.all(
 			Object.keys(infosByModelName).map((localModelName) =>
@@ -86,7 +95,11 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 								console.log(localModelName, count++);
 							}
 
-							await Promise.all(infos.map(({ run }) => limitRun(() => run(entry))));
+							await Promise.all(
+								infos.map(({ invalidate }) =>
+									limitInvalidate(() => invalidate(entry, false /* save */)),
+								),
+							);
 
 							if (entry.isModified()) {
 								await model.collection.updateOne(
@@ -114,10 +127,11 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 	return promise;
 };
 
-export default function externalPluginDerived<TModel extends EnhancedModel<any>>(
-	schema: EnhancedSchema<TModel>,
-	options: Array<Spec<ExtractEntryType<TModel>>>,
-) {
+export default function externalPluginDerived<
+	TModel extends EnhancedModel<AnyObject>,
+	TSchema extends EnhancedSchema<TModel> = EnhancedSchema<TModel>,
+	TEntry extends ExtractEntryType<TModel> = ExtractEntryType<TModel>,
+>(schema: TSchema, options: Readonly<Array<Spec<TEntry>>>) {
 	// function shouldSkip(localModel, foreignModel, spec, entryOrEntryID) {
 	// 	if (!synchingPromise) {
 	// 		return false;
@@ -139,82 +153,13 @@ export default function externalPluginDerived<TModel extends EnhancedModel<any>>
 	// 	return false;
 	// }
 
-	const createUpdater =
-		(
-			queryFn: (
-				foreignModel: EnhancedModel,
-				spec: Spec<EnhancedEntry<any>>,
-				entry: EnhancedEntry<any>,
-			) => Promise<any>,
-		) =>
-		async (
-			localModel: EnhancedModel,
-			foreignModel: EnhancedModel,
-			spec: Spec<EnhancedEntry<any>>,
-			entryOrEntryID: EnhancedEntry<any> | Types.ObjectId,
-			save: boolean = true,
-		) => {
-			if (!entryOrEntryID) {
-				return;
-			}
-
-			// if (shouldSkip(localModel, foreignModel, spec, entryOrEntryID)) {
-			// 	return;
-			// }
-
-			const entry = await localModel.ensureEntry(entryOrEntryID);
-
-			if (!entry) {
-				return;
-			}
-
-			const value = await queryFn(foreignModel, spec, entry);
-
-			if (entry.get(spec.localField) === value) {
-				return;
-			}
-
-			entry.set(spec.localField, value);
-
-			// TODO: perf: Should we use a bare bones mongo update instead? This fires all the side effects
-			// or have an opt-in option to enable this behavior when we have a chain dependency, or even better
-			// detect when we have a chain dependency and use a the .save() method only if necessary.
-			const r = save ? await entry.save() : null;
-
-			return r;
-		};
-
-	const updateCount = createUpdater(async (foreignModel, spec, entry) => {
-		const count = await foreignModel.countDocuments({
-			[spec.foreignKey]: entry.get(spec.localKey),
-			...(spec.query ? spec.query(entry) : {}),
-		});
-
-		return count;
-	});
-
-	const updateSum = createUpdater(async (foreignModel, spec, entry) => {
-		const entries = await foreignModel.find({
-			[spec.foreignKey]: entry.get(spec.localKey),
-			...(spec.query ? spec.query(entry) : {}),
-		});
-
-		const sum = entries.reduce((sum, entry) => sum + entry.get((spec as any).foreignSumKey), 0);
-
-		return sum;
-	});
-
-	const updateCustom = createUpdater(async (foreignModel, spec, entry) => {
-		return await spec.query!(entry);
-	});
-
 	schema.methods.syncDerived = async function () {
 		const model = mongoose.model(schema.modelName);
 		const limitRun = pLimit(6);
 
 		const infos = allDeriveds.filter((info) => info.localModelName === schema.modelName);
 
-		await Promise.all(infos.map(({ run }) => limitRun(() => run(this))));
+		await Promise.all(infos.map(({ invalidate }) => limitRun(() => invalidate(this))));
 
 		if (this.isModified()) {
 			await model.collection.updateOne({ _id: this._id }, this.getChanges(), {
@@ -226,86 +171,117 @@ export default function externalPluginDerived<TModel extends EnhancedModel<any>>
 	};
 
 	options.forEach((spec) => {
-		const isNumeric = spec.method === 'count' || spec.method === 'sum';
+		const method = spec.method;
+		const localKey = method === 'count' || method === 'sum' ? spec.localKey || '_id' : '_id';
+		const defaultValue = spec.defaultValue || 0;
 
-		spec.localKey = spec.localKey || '_id';
-		spec.defaultValue = spec.defaultValue || (isNumeric ? 0 : null);
+		schema.whenNew(function () {
+			this.set(spec.localField, defaultValue);
+		});
 
-		if (spec.method === 'count' || spec.method === 'sum' || spec.method === 'custom') {
-			const updateFn =
-				spec.method === 'count'
-					? updateCount
-					: spec.method === 'sum'
-					? updateSum
-					: updateCustom;
+		let calculate: (entry: TEntry) => Promise<any>;
+		let subscribeInvalidations: (
+			invalidate: (
+				entryOrEntryID: Types.ObjectId | TEntry | null | undefined,
+				save?: boolean,
+			) => Promise<void>,
+		) => void;
 
-			schema.whenNew(function () {
-				this.set(spec.localField, spec.defaultValue);
-			});
+		if (method === 'count' || method === 'sum') {
+			if (method === 'count') {
+				calculate = async (entry) => {
+					return mongoose.model(spec.foreignModelName).countDocuments({
+						[spec.foreignKey]: entry.get(localKey),
+					});
+				};
+			} else {
+				calculate = async (entry) => {
+					const entries = await mongoose.model(spec.foreignModelName).find({
+						[spec.foreignKey]: entry.get(localKey),
+					});
 
-			const watchedFields = [spec.foreignKey];
-
-			if (spec.method === 'sum') {
-				watchedFields.push(spec.foreignSumKey);
+					return entries.reduce((sum, entry) => sum + entry.get(spec.foreignSumKey), 0);
+				};
 			}
 
-			mongoose.enhance.onceSchemaIsReady(spec.foreignModelName, (foreignSchema) => {
-				foreignSchema.whenPostModifiedOrNew(watchedFields, async function () {
-					if (synchingPromise) {
-						return;
-					}
+			subscribeInvalidations = (invalidate) => {
+				const watchedFields = [spec.foreignKey];
 
-					const operations: Array<Promise<any>> = [];
+				if (spec.method === 'sum') {
+					watchedFields.push(spec.foreignSumKey);
+				}
 
-					if (
-						this.getOld(spec.foreignKey) &&
-						this.getOld(spec.foreignKey) !== this.get(spec.foreignKey)
-					) {
-						operations.push(
-							updateFn(
-								mongoose.model(schema.modelName),
-								this.constructor as TModel,
-								spec,
-								this.getOld(spec.foreignKey),
-							),
-						);
-					}
+				mongoose.enhance.onceSchemaIsReady(spec.foreignModelName, (foreignSchema) => {
+					foreignSchema.whenPostModifiedOrNew(watchedFields, async function () {
+						if (synchingPromise) {
+							return;
+						}
 
-					operations.push(
-						updateFn(
-							mongoose.model(schema.modelName),
-							this.constructor as TModel,
-							spec,
-							this.get(spec.foreignKey),
-						),
-					);
+						const operations: Array<Promise<any>> = [];
 
-					await Promise.all(operations);
+						if (
+							this.getOld(spec.foreignKey) &&
+							this.getOld(spec.foreignKey) !== this.get(spec.foreignKey)
+						) {
+							operations.push(invalidate(this.getOld(spec.foreignKey)));
+						}
+
+						operations.push(invalidate(this.get(spec.foreignKey)));
+
+						await Promise.all(operations);
+					});
+
+					foreignSchema.whenPostRemoved(function () {
+						return invalidate(this.get(spec.foreignKey));
+					});
 				});
-
-				foreignSchema.whenPostRemoved(function () {
-					return updateFn(
-						mongoose.model(schema.modelName),
-						this.constructor as TModel,
-						spec,
-						this.get(spec.foreignKey),
-					);
-				});
-			});
-
-			allDeriveds.push({
-				localModelName: schema.modelName,
-				spec,
-				run: async (entry) => {
-					await updateFn(
-						mongoose.model(schema.modelName),
-						mongoose.model(spec.foreignModelName),
-						spec,
-						entry,
-						false /* save */,
-					);
-				},
-			});
+			};
+		} else {
+			calculate = spec.calculate;
+			subscribeInvalidations = spec.subscribeInvalidations;
 		}
+
+		const invalidate = async (
+			entryOrEntryID: Types.ObjectId | TEntry | null | undefined,
+			save: boolean = true,
+		) => {
+			if (!entryOrEntryID) {
+				return;
+			}
+
+			// if (shouldSkip(mongoose.model(schema.modelName), mongoose.model(spec.foreignModelName), spec, entryOrEntryID)) {
+			// 	return;
+			// }
+
+			const entry = await mongoose
+				.model<TModel>(schema.modelName)
+				.ensureEntry(entryOrEntryID);
+
+			if (!entry) {
+				return;
+			}
+
+			const value = await calculate(entry as TEntry);
+
+			if (entry.get(spec.localField) === value) {
+				return;
+			}
+
+			entry.set(spec.localField, value);
+
+			// TODO: perf: Should we use a bare bones mongo update instead? This fires all the side effects
+			// or have an opt-in option to enable this behavior when we have a chain dependency, or even better
+			// detect when we have a chain dependency and use a the .save() method only if necessary.
+			if (save) {
+				await entry.save();
+			}
+		};
+
+		subscribeInvalidations(invalidate);
+
+		allDeriveds.push({
+			localModelName: schema.modelName,
+			invalidate,
+		});
 	});
 }

@@ -1,4 +1,4 @@
-import { EnhancedModel, ExtractEntryType, PluginDerivedMethods, Types } from '..';
+import { EnhancedModel, EnhancedSchema, ExtractEntryType, Types } from '..';
 import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
@@ -36,13 +36,6 @@ describe('derived', () => {
 				localField: 'itemsCount',
 				foreignModelName: 'Item',
 				foreignKey: 'user',
-				query: (entry) => {
-					expect(entry).not.toBeNull();
-
-					return {
-						ignore: { $ne: true },
-					};
-				},
 			},
 		]);
 
@@ -51,13 +44,11 @@ describe('derived', () => {
 		type ItemModel = EnhancedModel<{
 			user?: Types.ObjectId | ExtractEntryType<typeof User>;
 			createdAt?: Date;
-			ignore?: boolean;
 		}>;
 
 		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
 			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 			createdAt: Date,
-			ignore: Boolean,
 		});
 
 		itemSchema.hasMany('SubItem', 'item');
@@ -101,12 +92,6 @@ describe('derived', () => {
 		await new Item({
 			user: user2._id,
 			createdAt: new Date(),
-		}).save();
-
-		await new Item({
-			user: user2._id,
-			createdAt: new Date(),
-			ignore: true,
 		}).save();
 
 		await user.restore();
@@ -232,12 +217,12 @@ describe('derived', () => {
 	it('should derive custom', async () => {
 		type BoardModel = EnhancedModel<{
 			name?: string;
-			thumbnail?: string;
+			publicItemsCount?: number;
 		}>;
 
 		const boardSchema = mongoose.createSchema<BoardModel>('Board', {
 			name: String,
-			thumbnail: String,
+			publicItemsCount: Number,
 		});
 
 		boardSchema.hasMany('Item', 'user');
@@ -245,27 +230,26 @@ describe('derived', () => {
 		mongoose.enhance.plugins.derived(boardSchema, [
 			{
 				method: 'custom',
-				localField: 'thumbnail',
-				foreignModelName: 'BoardItem',
-				foreignKey: 'board',
-				query: async (entry) => {
+				localField: 'publicItemsCount',
+				calculate: async (entry) => {
 					expect(entry).not.toBeNull();
 
-					const boardItems = await mongoose
-						.model<BoardItemModel>('BoardItem')
-						.find({
-							board: entry._id,
-							ignore: { $ne: true },
-						})
-						.sort('-order')
-						.limit(1)
-						.exec();
+					return mongoose.model<BoardItemModel>('BoardItem').countDocuments({
+						board: entry._id,
+						private: { $ne: true },
+					});
+				},
+				subscribeInvalidations(invalidate) {
+					mongoose.enhance.onceSchemaIsReady('BoardItem', (s) => {
+						const schema = s as unknown as EnhancedSchema<BoardItemModel>;
+						schema.whenPostModifiedOrNew(['board', 'private'], function () {
+							return invalidate(this.board);
+						});
 
-					if (boardItems && boardItems[0]) {
-						return boardItems[0].thumbnail;
-					}
-
-					return null;
+						schema.whenPostRemoved(function () {
+							return invalidate(this.board);
+						});
+					});
 				},
 			},
 		]);
@@ -276,16 +260,12 @@ describe('derived', () => {
 
 		type BoardItemModel = EnhancedModel<{
 			board?: Types.ObjectId | ExtractEntryType<typeof Board>;
-			order?: number;
-			thumbnail?: string;
-			ignore?: boolean;
+			private?: boolean;
 		}>;
 
 		const boardItemSchema = mongoose.createSchema<BoardItemModel>('BoardItem', {
 			board: { type: mongoose.Schema.Types.ObjectId, ref: 'Board' },
-			order: Number,
-			thumbnail: String,
-			ignore: Boolean,
+			private: Boolean,
 		});
 
 		const BoardItem = mongoose.model(boardItemSchema);
@@ -296,17 +276,16 @@ describe('derived', () => {
 
 		await board.restore();
 
-		expect(board.thumbnail).toBe(null);
+		expect(board.publicItemsCount).toBe(0);
 
 		const boardItem1 = await new BoardItem({
 			board: board._id,
-			order: 1,
-			thumbnail: 'thumbnail1.jpg',
+			private: true,
 		}).save();
 
 		await board.restore();
 
-		expect(board.thumbnail).toBe(boardItem1.thumbnail);
+		expect(board.publicItemsCount).toBe(0);
 
 		const board2 = await new Board({
 			name: 'User Name 2',
@@ -314,47 +293,53 @@ describe('derived', () => {
 
 		await board2.restore();
 
-		expect(board2.thumbnail).toBe(null);
+		expect(board2.publicItemsCount).toBe(0);
 
 		const boardItem2 = await new BoardItem({
 			board: board2._id,
-			order: 1,
-			thumbnail: 'thumbnail2.jpg',
+			private: false,
 		}).save();
 
 		await board.restore();
 		await board2.restore();
 
-		expect(board.thumbnail).toBe(boardItem1.thumbnail);
-		expect(board2.thumbnail).toBe(boardItem2.thumbnail);
+		expect(board.publicItemsCount).toBe(0);
+		expect(board2.publicItemsCount).toBe(1);
 
 		const boardItem3 = await new BoardItem({
 			board: board2._id,
-			order: 2,
-			thumbnail: 'thumbnail3.jpg',
+			private: true,
 		}).save();
 
 		await board.restore();
 		await board2.restore();
 
-		expect(board.thumbnail).toBe(boardItem1.thumbnail);
-		expect(board2.thumbnail).toBe(boardItem3.thumbnail);
+		expect(board.publicItemsCount).toBe(0);
+		expect(board2.publicItemsCount).toBe(1);
 
 		await boardItem1.remove();
 
 		await board.restore();
 		await board2.restore();
 
-		expect(board.thumbnail).toBe(null);
-		expect(board2.thumbnail).toBe(boardItem3.thumbnail);
+		expect(board.publicItemsCount).toBe(0);
+		expect(board2.publicItemsCount).toBe(1);
 
 		await boardItem3.remove();
 
 		await board.restore();
 		await board2.restore();
 
-		expect(board.thumbnail).toBe(null);
-		expect(board2.thumbnail).toBe(boardItem2.thumbnail);
+		expect(board.publicItemsCount).toBe(0);
+		expect(board2.publicItemsCount).toBe(1);
+
+		await boardItem2.remove();
+
+		await board.restore();
+		await board2.restore();
+
+		expect(board.publicItemsCount).toBe(0);
+		expect(board2.publicItemsCount).toBe(0);
 	});
 
 	it('should sync derived fields', async () => {
@@ -538,84 +523,77 @@ describe('derived', () => {
 		expect(board.itemsCount).toBe(0);
 	});
 
-	it('should sync individual model', async () => {
-		type UserModel = EnhancedModel<
-			{
-				name?: string;
-				itemsCount?: number;
-			},
-			PluginDerivedMethods
-		>;
+	// TODO: Use native mongo driver updates then manually call .syncDerived on the entry
+	// it('should sync individual model', async () => {
+	// 	type UserModel = EnhancedModel<
+	// 		{
+	// 			name?: string;
+	// 			itemsCount?: number;
+	// 		},
+	// 		PluginDerivedMethods
+	// 	>;
 
-		const userSchema = mongoose.createSchema<UserModel>('User', {
-			name: String,
-			itemsCount: Number,
-		});
+	// 	const userSchema = mongoose.createSchema<UserModel>('User', {
+	// 		name: String,
+	// 		itemsCount: Number,
+	// 	});
 
-		userSchema.hasMany('Item', 'user');
+	// 	userSchema.hasMany('Item', 'user');
 
-		mongoose.enhance.plugins.derived(userSchema, [
-			{
-				method: 'count',
-				localField: 'itemsCount',
-				foreignModelName: 'Item',
-				foreignKey: 'user',
-				query: (entry) => {
-					expect(entry).not.toBeNull();
+	// 	mongoose.enhance.plugins.derived(userSchema, [
+	// 		{
+	// 			method: 'count',
+	// 			localField: 'itemsCount',
+	// 			foreignModelName: 'Item',
+	// 			foreignKey: 'user',
+	// 		},
+	// 	]);
 
-					return {
-						ignore: { $ne: true },
-					};
-				},
-			},
-		]);
+	// 	const User = mongoose.model(userSchema);
 
-		const User = mongoose.model(userSchema);
+	// 	type ItemModel = EnhancedModel<{
+	// 		user?: Types.ObjectId | ExtractEntryType<typeof User>;
+	// 		createdAt?: Date;
+	// 	}>;
 
-		type ItemModel = EnhancedModel<{
-			user?: Types.ObjectId | ExtractEntryType<typeof User>;
-			createdAt?: Date;
-			ignore?: boolean;
-		}>;
+	// 	const itemSchema = mongoose.createSchema<ItemModel>('Item', {
+	// 		user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+	// 		createdAt: Date,
+	// 		ignore: Boolean,
+	// 	});
 
-		const itemSchema = mongoose.createSchema<ItemModel>('Item', {
-			user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-			createdAt: Date,
-			ignore: Boolean,
-		});
+	// 	const Item = mongoose.model(itemSchema);
 
-		const Item = mongoose.model(itemSchema);
+	// 	const user = await new User({
+	// 		name: 'User Name',
+	// 	}).save();
 
-		const user = await new User({
-			name: 'User Name',
-		}).save();
+	// 	expect(user.itemsCount).toBe(0);
 
-		expect(user.itemsCount).toBe(0);
+	// 	const item1 = await new Item({
+	// 		user: user._id,
+	// 		createdAt: new Date(),
+	// 		ignore: true,
+	// 	}).save();
 
-		const item1 = await new Item({
-			user: user._id,
-			createdAt: new Date(),
-			ignore: true,
-		}).save();
+	// 	await user.restore();
 
-		await user.restore();
+	// 	expect(user.itemsCount).toBe(0);
 
-		expect(user.itemsCount).toBe(0);
+	// 	item1.ignore = false;
+	// 	await item1.save();
 
-		item1.ignore = false;
-		await item1.save();
+	// 	await user.restore();
 
-		await user.restore();
+	// 	expect(user.itemsCount).toBe(0);
 
-		expect(user.itemsCount).toBe(0);
+	// 	const user2 = await user.syncDerived();
 
-		const user2 = await user.syncDerived();
+	// 	expect(user2).toBe(user);
+	// 	expect(user.itemsCount).toBe(1);
 
-		expect(user2).toBe(user);
-		expect(user.itemsCount).toBe(1);
+	// 	await user.restore();
 
-		await user.restore();
-
-		expect(user.itemsCount).toBe(1);
-	});
+	// 	expect(user.itemsCount).toBe(1);
+	// });
 });
