@@ -200,7 +200,7 @@ function model<TModel extends AnyEnhancedModel = EnhancedModel>(
 	}
 }
 
-function onceSchemaIsReady<TSchema extends AnyEnhancedSchema>(
+function onceSchemaIsReady<TSchema extends EnhancedSchema<EnhancedModel<{}>>>(
 	name: string,
 	callback: (schema: TSchema) => void,
 ) {
@@ -217,7 +217,7 @@ function onceSchemaIsReady<TSchema extends AnyEnhancedSchema>(
 	schemaReadyCallbacks.set(name, callbacks);
 }
 
-function onceModelIsReady<TModel extends AnyEnhancedModel>(
+function onceModelIsReady<TModel extends EnhancedModel<{}>>(
 	name: string,
 	callback: (model: TModel) => void,
 ) {

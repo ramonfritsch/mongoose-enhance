@@ -240,16 +240,18 @@ describe('derived', () => {
 					});
 				},
 				subscribeInvalidations(invalidate) {
-					mongoose.enhance.onceSchemaIsReady('BoardItem', (s) => {
-						const schema = s as unknown as EnhancedSchema<BoardItemModel>;
-						schema.whenPostModifiedOrNew(['board', 'private'], function () {
-							return invalidate(this.board);
-						});
+					mongoose.enhance.onceSchemaIsReady<EnhancedSchema<BoardItemModel>>(
+						'BoardItem',
+						(schema) => {
+							schema.whenPostModifiedOrNew(['board', 'private'], function () {
+								return invalidate(this.board);
+							});
 
-						schema.whenPostRemoved(function () {
-							return invalidate(this.board);
-						});
-					});
+							schema.whenPostRemoved(function () {
+								return invalidate(this.board);
+							});
+						},
+					);
 				},
 			},
 		]);
