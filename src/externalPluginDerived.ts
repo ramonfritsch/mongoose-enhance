@@ -128,8 +128,8 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 };
 
 export default function externalPluginDerived<
+	TSchema extends EnhancedSchema<TModel>,
 	TModel extends EnhancedModel<AnyObject>,
-	TSchema extends EnhancedSchema<TModel> = EnhancedSchema<TModel>,
 	TEntry extends ExtractEntryType<TModel> = ExtractEntryType<TModel>,
 >(schema: TSchema, options: Readonly<Array<Spec<TEntry>>>) {
 	// function shouldSkip(localModel, foreignModel, spec, entryOrEntryID) {

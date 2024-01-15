@@ -1,4 +1,5 @@
 import mongooseOriginal, {
+	AnyObject,
 	Document,
 	LeanDocument,
 	Model,
@@ -200,7 +201,7 @@ function model<TModel extends AnyEnhancedModel = EnhancedModel>(
 	}
 }
 
-function onceSchemaIsReady<TSchema extends EnhancedSchema<EnhancedModel<{}>>>(
+function onceSchemaIsReady<TSchema extends EnhancedSchema<EnhancedModel<AnyObject>>>(
 	name: string,
 	callback: (schema: TSchema) => void,
 ) {
@@ -217,7 +218,7 @@ function onceSchemaIsReady<TSchema extends EnhancedSchema<EnhancedModel<{}>>>(
 	schemaReadyCallbacks.set(name, callbacks);
 }
 
-function onceModelIsReady<TModel extends EnhancedModel<{}>>(
+function onceModelIsReady<TModel extends EnhancedModel<AnyObject>>(
 	name: string,
 	callback: (model: TModel) => void,
 ) {
