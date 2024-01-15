@@ -158,7 +158,9 @@ export default function externalPluginDerived<TModel extends EnhancedModel<any>>
 
 		const infos = allDeriveds.filter((info) => info.localModelName === schema.modelName);
 
-		await Promise.all(infos.map(({ invalidate }) => limitRun(() => invalidate(this))));
+		await Promise.all(
+			infos.map(({ invalidate }) => limitRun(() => invalidate(this, false /* save */))),
+		);
 
 		if (this.isModified()) {
 			await model.collection.updateOne({ _id: this._id }, this.getChanges(), {
