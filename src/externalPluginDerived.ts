@@ -127,11 +127,10 @@ export const syncDerived = async function (options: { log?: boolean } = {}) {
 	return promise;
 };
 
-export default function externalPluginDerived<
-	TSchema extends EnhancedSchema<TModel>,
-	TModel extends EnhancedModel<AnyObject>,
-	TEntry extends ExtractEntryType<TModel> = ExtractEntryType<TModel>,
->(schema: TSchema, options: Readonly<Array<Spec<TEntry>>>) {
+export default function externalPluginDerived<TModel extends EnhancedModel<any>>(
+	schema: EnhancedSchema<TModel>,
+	options: Readonly<Array<Spec<ExtractEntryType<TModel>>>>,
+) {
 	// function shouldSkip(localModel, foreignModel, spec, entryOrEntryID) {
 	// 	if (!synchingPromise) {
 	// 		return false;
@@ -179,10 +178,10 @@ export default function externalPluginDerived<
 			this.set(spec.localField, defaultValue);
 		});
 
-		let calculate: (entry: TEntry) => Promise<any>;
+		let calculate: (entry: ExtractEntryType<TModel>) => Promise<any>;
 		let subscribeInvalidations: (
 			invalidate: (
-				entryOrEntryID: Types.ObjectId | TEntry | null | undefined,
+				entryOrEntryID: Types.ObjectId | ExtractEntryType<TModel> | null | undefined,
 				save?: boolean,
 			) => Promise<void>,
 		) => void;
@@ -242,7 +241,7 @@ export default function externalPluginDerived<
 		}
 
 		const invalidate = async (
-			entryOrEntryID: Types.ObjectId | TEntry | null | undefined,
+			entryOrEntryID: Types.ObjectId | ExtractEntryType<TModel> | null | undefined,
 			save: boolean = true,
 		) => {
 			if (!entryOrEntryID) {
@@ -261,7 +260,7 @@ export default function externalPluginDerived<
 				return;
 			}
 
-			const value = await calculate(entry as TEntry);
+			const value = await calculate(entry as ExtractEntryType<TModel>);
 
 			if (entry.get(spec.localField) === value) {
 				return;

@@ -1,5 +1,4 @@
 import mongooseOriginal, {
-	AnyObject,
 	Document,
 	LeanDocument,
 	Model,
@@ -46,6 +45,12 @@ type ExtraMethods = PluginOldMethods & PluginRestoreMethods & PluginWasModifiedM
 type ExtraStatics<TEntry extends AnyEnhancedEntry> = PluginEnsureEntryStatics<TEntry> &
 	PluginPaginateStatics<TEntry>;
 type ExtraQueryHelpers = PluginMetricsQueryHelpers;
+
+export type ExtractModelType<TSchema extends EnhancedSchema<any>> = TSchema extends EnhancedSchema<
+	infer TModel
+>
+	? TModel
+	: never;
 
 export type ExtractEntryType<TModel extends AnyEnhancedModel> = TModel extends EnhancedModel<
 	infer TLeanEntry,
@@ -201,9 +206,9 @@ function model<TModel extends AnyEnhancedModel = EnhancedModel>(
 	}
 }
 
-function onceSchemaIsReady<TSchema extends EnhancedSchema<EnhancedModel<AnyObject>>>(
+function onceSchemaIsReady<TModel extends EnhancedModel<any>>(
 	name: string,
-	callback: (schema: TSchema) => void,
+	callback: (schema: EnhancedSchema<TModel>) => void,
 ) {
 	if (compiledModelNames.includes(name)) {
 		throw new Error(
@@ -218,7 +223,7 @@ function onceSchemaIsReady<TSchema extends EnhancedSchema<EnhancedModel<AnyObjec
 	schemaReadyCallbacks.set(name, callbacks);
 }
 
-function onceModelIsReady<TModel extends EnhancedModel<AnyObject>>(
+function onceModelIsReady<TModel extends EnhancedModel<any>>(
 	name: string,
 	callback: (model: TModel) => void,
 ) {

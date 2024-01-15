@@ -1,4 +1,4 @@
-import { EnhancedModel, EnhancedSchema, ExtractEntryType, Types } from '..';
+import { EnhancedModel, ExtractEntryType, Types } from '..';
 import testMemoryServer from '../__tests_utils__/testMemoryServer';
 
 jest.setTimeout(30000);
@@ -240,18 +240,15 @@ describe('derived', () => {
 					});
 				},
 				subscribeInvalidations(invalidate) {
-					mongoose.enhance.onceSchemaIsReady<EnhancedSchema<BoardItemModel>>(
-						'BoardItem',
-						(schema) => {
-							schema.whenPostModifiedOrNew(['board', 'private'], function () {
-								return invalidate(this.board);
-							});
+					mongoose.enhance.onceSchemaIsReady<BoardItemModel>('BoardItem', (schema) => {
+						schema.whenPostModifiedOrNew(['board', 'private'], function () {
+							return invalidate(this.board);
+						});
 
-							schema.whenPostRemoved(function () {
-								return invalidate(this.board);
-							});
-						},
-					);
+						schema.whenPostRemoved(function () {
+							return invalidate(this.board);
+						});
+					});
 				},
 			},
 		]);
