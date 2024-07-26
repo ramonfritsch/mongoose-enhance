@@ -48,6 +48,38 @@ describe('extraTypes', () => {
 		await user.save();
 
 		expect(user.shortID!.length).toBeGreaterThan(0);
+
+		// expect(async () => {
+		await new User({
+			email: 'email2email.com',
+			username: 'username',
+			url: 'https://www.google.com',
+		}).save();
+		// }).rejects.toThrow('Email is invalid');
+
+		expect(async () => {
+			await new User({
+				email: 'email@email.com',
+				username: 'username 3',
+				url: 'https://www.google.com',
+			}).save();
+		}).rejects.toThrow();
+
+		expect(async () => {
+			await new User({
+				email: 'email@email.com',
+				username: 'username.3',
+				url: 'https://www.google.com',
+			}).save();
+		}).rejects.toThrow();
+
+		expect(async () => {
+			await new User({
+				email: 'email@email.com',
+				username: 'username',
+				url: 'http://2ww.google.com',
+			}).save();
+		}).rejects.toThrow();
 	});
 
 	it('should support nested schemas', async () => {
